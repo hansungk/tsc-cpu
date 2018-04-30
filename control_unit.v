@@ -70,10 +70,6 @@ module control_unit(
    output                      is_halted
 );
 
-   // Microprogram counter
-   // indicates current stage (IF, ID, EX, MEM, WB).
-   reg [2:0] 	mPC, nmPC;
-
    // indicates whether to update num_inst
    // whenever microprogram control flow jumps to IF, this should be asserted.
    reg 			complete;
@@ -123,18 +119,16 @@ module control_unit(
    end
 
    always @(*) begin
-      // Microprogram control flow
-      // select next mPC by inst type, and set pc_write accordingly
+      // FIXME Comment here
 
       // defaults
-      nmPC = mPC + 1;
       i_or_d = 0;
       i_mem_read = 0;
       d_mem_read = 0;
       i_mem_write = 0;
       d_mem_write = 0;
-      ir_write = 0;
-      pc_write = 0;
+      ir_write = 1;
+      pc_write = 1;
       pc_write_cond = 0;
       pc_src = `PCSRC_SEQ;
       reg_dst = `REGDST_RD;
@@ -143,35 +137,9 @@ module control_unit(
       alu_src_swap = 0;
       output_write = 0;
       complete = 0;
-      
-      // common control logic
-      case (mPC)
-	`MPC_IF: begin
-	   // fetch inst from memory and latch it
-	   i_mem_read = 1;
-	   ir_write = 1;
 
-	   // pre-calculate next sequential PC and write it (ALU
-	   // sharing)
-	   alu_src_a = `ALUSRCA_PC;
-	   alu_src_b = `ALUSRCB_ONE;
-	   pc_write = 1;
-	end
-	`MPC_ID: begin
-	   // pre-calculate address for branch (ALU sharing), but
-	   // don't write it yet because we are not sure this is a
-	   // branch
-	   alu_src_a = `ALUSRCA_PC;
-	   alu_src_b = `ALUSRCB_IMM;
-	end
-	`MPC_WB: begin
-	   nmPC = `MPC_IF;
-	   complete = 1;
-
-	   // do what WB does
-	   reg_write = 1;
-	end
-      endcase
+      // fetch inst from memory and latch it
+      i_mem_read = 1;
 
       // Instruction-specific control logic
       //
@@ -180,124 +148,110 @@ module control_unit(
       // (e.g. reg_write_src, reg_dst)
       case (instType)
 	`INSTTYPE_RTYPE: begin
+           pc_write = 1;
+
 	   reg_write_src = `REGWRITESRC_REG;
 	   reg_dst = (opcode == `OPCODE_ADI || opcode == `OPCODE_ORI) ? `REGDST_RT : `REGDST_RD;
 
-	   if (mPC == `MPC_EX) begin
-	      nmPC = `MPC_WB; // skip MEM
+	   // switch to arithmetic mode from address calc mode
+	   ALUMode = 1;
 
-	      // switch to arithmetic mode from address calc mode
-	      ALUMode = 1;
-
-	      // TCP is calculated as 0 - A, which requires feeding
-	      // zero to SrcA and A to SrcB
-	      // ADI and ORI are treated as R-Type and also needs
-	      // special treatment here
-	      alu_src_swap = isTCP;
-	      alu_src_a = `ALUSRCA_REG;
-	      alu_src_b = (opcode == `OPCODE_ADI || opcode == `OPCODE_ORI) ?
-			  `ALUSRCB_IMM : // A - imm
-			  (isTCP ?
-			   `ALUSRCB_ZERO : // 0 - A (with swap)
-			   `ALUSRCB_REG); // A - B
-	   end
+	   // TCP is calculated as 0 - A, which requires feeding
+	   // zero to SrcA and A to SrcB
+	   // ADI and ORI are treated as R-Type and also needs
+	   // special treatment here
+	   alu_src_swap = isTCP;
+	   alu_src_a = `ALUSRCA_REG;
+	   alu_src_b = (opcode == `OPCODE_ADI || opcode == `OPCODE_ORI) ?
+		       `ALUSRCB_IMM : // A - imm
+		       (isTCP ?
+			`ALUSRCB_ZERO : // 0 - A (with swap)
+			`ALUSRCB_REG); // A - B
 	end
 	`INSTTYPE_LOAD: begin
 	   reg_write_src = (opcode == `OPCODE_LHI) ? `REGWRITESRC_IMM : `REGWRITESRC_MEM;
 	   reg_dst = `REGDST_RT;
 
-	   if (mPC == `MPC_EX) begin
-	      // calculate memory read address
-	      alu_src_a = `ALUSRCA_REG;
-	      alu_src_b = `ALUSRCB_IMM;
-	   end
-	   else if (mPC == `MPC_MEM) begin
-	      // read from data memory
-	      i_or_d = 1;
-	      d_mem_read = 1;
-	   end
+	   // calculate memory read address
+	   alu_src_a = `ALUSRCA_REG;
+	   alu_src_b = `ALUSRCB_IMM;
+
+	   // read from data memory
+	   i_or_d = 1;
+	   d_mem_read = 1;
 	end
 	`INSTTYPE_STORE: begin
-	   if (mPC == `MPC_EX) begin
-	      // calculate memory write address
-	      alu_src_a = `ALUSRCA_REG;
-	      alu_src_b = `ALUSRCB_IMM;
-	   end
-	   else if (mPC == `MPC_MEM) begin
-	      nmPC = `MPC_IF; // restart after MEM
-	      complete = 1;
+	   // calculate memory write address
+	   alu_src_a = `ALUSRCA_REG;
+	   alu_src_b = `ALUSRCB_IMM;
 
-	      // write to data memory
-	      i_or_d = 1;
-	      d_mem_write = 1;
-	   end
+	   // write to data memory
+	   i_or_d = 1;
+	   d_mem_write = 1;
 	end
 	`INSTTYPE_BRANCH: begin
-	   if (mPC == `MPC_EX) begin
-	      nmPC = `MPC_IF; // restart after EX
-	      complete = 1;
+	   complete = 1;
 
-	      // compute branch outcome
-	      ALUMode = 1;
-	      alu_src_a = `ALUSRCA_REG;
-	      alu_src_b = (opcode == `OPCODE_BGZ || opcode == `OPCODE_BLZ) ?
-			  `ALUSRCB_ZERO :
-			  `ALUSRCB_REG;
-	      alu_src_swap = opcode == `OPCODE_BLZ;
+	   // compute branch outcome
+	   ALUMode = 1;
+	   alu_src_a = `ALUSRCA_REG;
+	   alu_src_b = (opcode == `OPCODE_BGZ || opcode == `OPCODE_BLZ) ?
+		       `ALUSRCB_ZERO :
+		       `ALUSRCB_REG;
+	   alu_src_swap = opcode == `OPCODE_BLZ;
 
-	      pc_src = `PCSRC_BRANCH;
-	      pc_write_cond = 1;
-	   end
+	   pc_src = `PCSRC_BRANCH;
+	   pc_write_cond = 1;
 	end
 	`INSTTYPE_JUMP: begin
-	   if (mPC == `MPC_ID) begin
-	      nmPC = `MPC_IF; // restart after ID
-	      complete = 1;
-	      pc_src = `PCSRC_JUMP;
-	      pc_write = 1;
+	   complete = 1;
+	   pc_src = `PCSRC_JUMP;
+	   pc_write = 1;
 
-	      // write PC to $2 for JAL
-	      if (opcode == `OPCODE_JAL) begin
-		 reg_dst = `REGDST_2;
-		 reg_write_src = `REGWRITESRC_PC;
-		 reg_write = 1;
-	      end
-	      // write $rs to PC for JPR
-	      else if (opcode == `OPCODE_RTYPE && func_code == `FUNC_JPR) begin
-		 pc_src = `PCSRC_REG;
-		 pc_write = 1;
-	      end
-	      // do both for JRL
-	      else if (opcode == `OPCODE_RTYPE && func_code == `FUNC_JRL) begin
-		 reg_dst = `REGDST_2;
-		 reg_write_src = `REGWRITESRC_PC;
-		 reg_write = 1;
-
-		 pc_src = `PCSRC_REG;
-		 pc_write = 1;
-	      end
+	   // write PC to $2 for JAL
+	   if (opcode == `OPCODE_JAL) begin
+	      reg_dst = `REGDST_2;
+	      reg_write_src = `REGWRITESRC_PC;
+	      reg_write = 1;
 	   end
+	   // write $rs to PC for JPR
+	   else if (opcode == `OPCODE_RTYPE && func_code == `FUNC_JPR) begin
+	      pc_src = `PCSRC_REG;
+	      pc_write = 1;
+	   end
+	   // do both for JRL
+	   else if (opcode == `OPCODE_RTYPE && func_code == `FUNC_JRL) begin
+	      reg_dst = `REGDST_2;
+	      reg_write_src = `REGWRITESRC_PC;
+	      reg_write = 1;
+
+	      pc_src = `PCSRC_REG;
+	      pc_write = 1;
+	   end
+	   // end
 	end
 	`INSTTYPE_OUTPUT: begin
-	   if (mPC == `MPC_ID) begin
-	      nmPC = `MPC_IF; // WWD only needs IF & ID
-	      complete = 1;
-	      output_write = 1;
-	   end
+	   complete = 1;
+	   output_write = 1;
 	end
-      endcase
+        default: begin // flush (0x0000), wrong opcode, etc.
+           pc_write = 0;
+        end
+      endcase // case (instType)
+
+      // control hazard detection
+      // if (!pc_resolved_id) begin
+      //    pc_write = 0;
+      //    // ir_write = 0;
+      // end
    end // always @ (*)
 
    // Microprogram state update
    always @(posedge clk) begin
       if (reset_n == 0) begin
 	 num_inst <= 0;
-	 mPC <= 0;
       end
       else begin
-	 // stop updating mPC for HLT
-	 if (!isHLT)
-	   mPC <= nmPC;
 	 if (complete)
 	   num_inst <= num_inst + 1;
       end
