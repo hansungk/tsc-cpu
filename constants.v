@@ -36,6 +36,7 @@
 `define INSTTYPE_BRANCH 4'd3
 `define INSTTYPE_JUMP 4'd4
 `define INSTTYPE_OUTPUT 4'd5
+`define INSTTYPE_NOP 4'd6
 
 // MUX selectors
 

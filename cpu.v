@@ -48,8 +48,6 @@ module cpu(
 			 .opcode (opcode),
 			 .func_code (func_code),
                          .inst_type(inst_type),
-			 .pc_write (pc_write),
-			 .pc_write_cond (pc_write_cond),
 			 .pc_src (pc_src),
 			 .i_or_d (i_or_d),
 			 .i_mem_read(i_readM),
@@ -65,7 +63,6 @@ module cpu(
 			 .reg_write_src (reg_write_src),
 			 .reg_dst (reg_dst),
 			 .output_write (output_write),
-			 .num_inst (num_inst),
 			 .is_halted (is_halted)); 
 
    hazard_unit Hazard (.inst_type(inst_type),
@@ -73,7 +70,8 @@ module cpu(
 		       .bubblify(bubblify),
 		       .flush(flush),
 		       .pc_write(pc_write),
-		       .ir_write(ir_write));
+		       .ir_write(ir_write),
+                       .incr_num_inst(incr_num_inst));
 
    datapath #(.WORD_SIZE (`WORD_SIZE)) 
    DP (
@@ -92,9 +90,10 @@ module cpu(
        .alu_src_a (alu_src_a),
        .alu_src_b (alu_src_b),
        .alu_src_swap (alu_src_swap),
+       .reg_dst (reg_dst),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
-       .reg_dst (reg_dst),
+       .incr_num_inst (incr_num_inst),
        .output_write (output_write),
        .i_data (i_data),
        .d_data (d_data),
@@ -104,6 +103,8 @@ module cpu(
        .d_address (d_address),
        .output_port (output_port),
        .opcode(opcode),
-       .func_code (func_code)
+       .func_code (func_code),
+       .inst_type (inst_type),
+       .num_inst (num_inst)
        );
 endmodule
