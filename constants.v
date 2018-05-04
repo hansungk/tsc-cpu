@@ -29,6 +29,14 @@
 `define	OP_ALS	4'b1110
 `define	OP_LT	4'b1111
 
+// Instruction types
+`define INSTTYPE_RTYPE 4'd0
+`define INSTTYPE_LOAD 4'd1
+`define INSTTYPE_STORE 4'd2
+`define INSTTYPE_BRANCH 4'd3
+`define INSTTYPE_JUMP 4'd4
+`define INSTTYPE_OUTPUT 4'd5
+
 // MUX selectors
 
 `define PCSRC_SEQ 0

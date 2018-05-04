@@ -30,8 +30,11 @@ module cpu(
    wire        pc_write;
    wire        pc_write_cond;
    wire        i_or_d;
+   wire        valid_ex;
+   wire        bubblify;
    wire        input_ready;
    wire [3:0]  opcode;
+   wire [2:0]  inst_type;
    wire [5:0]  func_code;
    wire        reg_write, ir_write, output_write;
    wire [1:0]  reg_dst, reg_write_src;
@@ -44,6 +47,7 @@ module cpu(
 			 .reset_n (reset_n),
 			 .opcode (opcode),
 			 .func_code (func_code),
+                         .inst_type(inst_type),
 			 .pc_write (pc_write),
 			 .pc_write_cond (pc_write_cond),
 			 .pc_src (pc_src),
@@ -63,7 +67,14 @@ module cpu(
 			 .output_write (output_write),
 			 .num_inst (num_inst),
 			 .is_halted (is_halted)); 
-   
+
+   hazard_unit Hazard (.inst_type(inst_type),
+		       .valid_ex(valid_ex),
+		       .bubblify(bubblify),
+		       .flush(flush),
+		       .pc_write(pc_write),
+		       .ir_write(ir_write));
+
    datapath #(.WORD_SIZE (`WORD_SIZE)) 
    DP (
        .clk(clk),
@@ -72,6 +83,8 @@ module cpu(
        .pc_write_cond (pc_write_cond),
        .pc_src (pc_src),
        .i_or_d (i_or_d),
+       .bubblify(bubblify),
+       .flush(flush),
        .i_mem_write (i_writeM),
        .d_mem_write (d_writeM),
        .ir_write (ir_write),
@@ -86,6 +99,7 @@ module cpu(
        .i_data (i_data),
        .d_data (d_data),
        .input_ready (input_ready),
+       .valid_ex (valid_ex),
        .i_address (i_address),
        .d_address (d_address),
        .output_port (output_port),

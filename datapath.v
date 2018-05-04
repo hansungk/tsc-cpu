@@ -30,6 +30,8 @@ module datapath
     input                      pc_write_cond,
     input [1:0]                pc_src,
     input                      i_or_d,
+    input                      bubblify,
+    input                      flush,
 
     // IF constrol signals
     input                      ir_write,
@@ -58,6 +60,7 @@ module datapath
     inout [WORD_SIZE-1:0]      d_data,
 
     input                      input_ready,
+    output reg                 valid_ex,
     output [WORD_SIZE-1:0]     i_address,
     output [WORD_SIZE-1:0]     d_address,
     output reg [WORD_SIZE-1:0] num_inst,
@@ -80,14 +83,16 @@ module datapath
    wire [WORD_SIZE-1:0]        alu_operand_1, alu_operand_2; // operands after swap
    wire [WORD_SIZE-1:0]        alu_result;
 
-   // pipeline registers
-   // (add to reset list below)
+   ////////////////////////
+   // Pipeline registers //
+   ////////////////////////
+   // don't forget to reset
 
    // unconditional latches
    reg [WORD_SIZE-1:0]         pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
    reg [WORD_SIZE-1:0]         npc_id; // PC + 4 at IF/ID
    reg [WORD_SIZE-1:0]         npc_ex; // PC + 4 at ID/EX
-   reg [WORD_SIZE-1:0]         IR; // instruction register
+   wire [WORD_SIZE-1:0]        ir; // instruction register, bound to separate module
    reg [WORD_SIZE-1:0]         MDR_wb; // memory data register
    reg [WORD_SIZE-1:0]         rt_ex; // for reg_dst
    reg [WORD_SIZE-1:0]         rd_ex; // for reg_dst
@@ -97,6 +102,7 @@ module datapath
    reg [WORD_SIZE-1:0]         imm_signed_ex, imm_signed_mem, imm_signed_wb;
 
    // control signal latches
+   reg                         valid_mem, valid_wb; // valid_ex already declared
    reg [3:0]                   alu_op_ex;
    reg                         alu_src_a_ex;
    reg [1:0]                   alu_src_b_ex;
@@ -108,7 +114,10 @@ module datapath
    reg                         d_mem_write_ex, d_mem_write_mem;
    reg                         reg_write_ex, reg_write_mem, reg_write_wb;
    reg                         reg_write_src_ex, reg_write_src_mem, reg_write_src_wb;
-   
+
+   /////////////////////////
+   // Module declarations //
+   /////////////////////////
 
    ALU alu(.OP(alu_op_ex),
            .A(alu_operand_1),
@@ -117,9 +126,10 @@ module datapath
            .C(alu_result)
            /*.Cout()*/);
 
-   RF rf(.write(reg_write_wb),
-         .clk(clk),
+   // Register file
+   RF rf(.clk(clk),
          .reset_n(reset_n),
+         .write(reg_write_wb),
          .addr1(addr1),
          .addr2(addr2),
          .addr3(addr3),
@@ -127,19 +137,29 @@ module datapath
          .data2(data2),
          .data3(writeData));
 
+   // Instruction register
+   IR ir_module(.clk(clk),
+                .nop(flush || !reset_n),
+                .write(ir_write),
+                .write_data(i_data),
+                .inst(ir));
+
+   ///////////////////////
+   // Per-stage wirings //
+   ///////////////////////
+
    // IF stage
-   // assign address = (i_or_d == 0) ? pc : alu_out_ex;
    assign i_address = pc;
    assign d_address = alu_out_ex;
 
    // ID stage
-   assign opcode = IR[15:12];
-   assign func_code = IR[5:0];
-   assign rs = IR[11:10];
-   assign rt = IR[9:8];
-   assign rd = IR[7:6];
-   assign imm = IR[7:0];
-   assign target_addr = IR[11:0];
+   assign opcode = ir[15:12];
+   assign func_code = ir[5:0];
+   assign rs = ir[11:10];
+   assign rt = ir[9:8];
+   assign rd = ir[7:6];
+   assign imm = ir[7:0];
+   assign target_addr = ir[11:0];
    assign addr1 = rs;
    assign addr2 = rt;
    
@@ -163,14 +183,18 @@ module datapath
                       (reg_write_src == `REGWRITESRC_MEM) ? MDR_wb :
                       /*(reg_write_src == `REGWRITESRC_PC) ?*/ pc_wb;
 
-   // Register transfers
+   ////////////////////////
+   // Register transfers //
+   ////////////////////////
+
    always @(posedge clk) begin
       if (reset_n == 0) begin
-         // reset all pipeline registers to zero for no unexpected surprises
+         // reset all pipeline registers and control signal registers
+         // to zero to prevent any initial output
          pc <= 0;
          npc_id <= 0;
          npc_ex <= 0;
-         IR <= 0;
+         valid_ex <= 0;
          MDR_wb <= 0;
          a_ex <= 0;
          b_ex <= 0;
@@ -180,13 +204,15 @@ module datapath
          output_port <= {WORD_SIZE{1'bz}};
       end
       else begin
-         // PC update
-         if (pc_write)
-           pc <= pc + 1; // TODO: stall
+         // ---------------------------------
+         // Register transfers for each stage
+         // ---------------------------------
 
-         // ----------------------
-         // unconditional latching
-         // ----------------------
+         // PC update
+         if (pc_write) begin
+            pc <= (pc_src == `PCSRC_JUMP) ? {pc[15:12], target_addr} :
+                  pc + 1; // TODO: else
+         end
 
          // IF stage
          npc_id <= pc + 1; // adder for PC
@@ -217,35 +243,50 @@ module datapath
          // control signal latching
          // ----------------------
 
-         // EX control signals
-         alu_op_ex <= alu_op;
-         alu_src_a_ex <= alu_src_a;
-         alu_src_b_ex <= alu_src_b;
-         alu_src_swap_ex <= alu_src_swap;
-         reg_dst_ex <= reg_dst;
-
-         // MEM control signals
-         i_mem_read_ex <= i_mem_read;
-         i_mem_read_mem <= i_mem_read_ex;
-         d_mem_read_ex <= d_mem_read;
-         d_mem_read_mem <= d_mem_read_ex;
-         i_mem_write_ex <= i_mem_write;
-         i_mem_write_mem <= i_mem_write_ex;
-         d_mem_write_ex <= d_mem_write;
-         d_mem_write_mem <= d_mem_write_ex;
-
-         // WB control signals
-         reg_write_ex <= reg_write;
-         reg_write_mem <= reg_write_ex;
-         reg_write_wb <= reg_write_mem;
-         reg_write_src_ex <= reg_write_src;
-         reg_write_src_mem <= reg_write_src_ex;
-         reg_write_src_wb <= reg_write_src_mem;
-
-         // instruction register
-         if (ir_write) begin
-            IR <= i_data;
+         // EX stage (EX+MEM+WB)
+         // if hazard detected, insert bubbles into pipeline
+         if (bubblify) begin
+            valid_ex <= 0;
+            alu_op_ex <= 0;
+            alu_src_a_ex <= 0;
+            alu_src_b_ex <= 0;
+            alu_src_swap_ex <= 0;
+            reg_dst_ex <= 0;
+            i_mem_read_ex <= 0;
+            d_mem_read_ex <= 0;
+            i_mem_write_ex <= 0;
+            d_mem_write_ex <= 0;
+            reg_write_ex <= 0;
+            reg_write_src_ex <= 0;
          end
+         else begin
+            valid_ex <= 1;
+            alu_op_ex <= alu_op;
+            alu_src_a_ex <= alu_src_a;
+            alu_src_b_ex <= alu_src_b;
+            alu_src_swap_ex <= alu_src_swap;
+            reg_dst_ex <= reg_dst;
+            i_mem_read_ex <= i_mem_read;
+            d_mem_read_ex <= d_mem_read;
+            i_mem_write_ex <= i_mem_write;
+            d_mem_write_ex <= d_mem_write;
+            reg_write_ex <= reg_write;
+            reg_write_src_ex <= reg_write_src;
+         end
+
+         // MEM stage (MEM+WB)
+         valid_mem <= valid_ex;
+         i_mem_read_mem <= i_mem_read_ex;
+         d_mem_read_mem <= d_mem_read_ex;
+         i_mem_write_mem <= i_mem_write_ex;
+         d_mem_write_mem <= d_mem_write_ex;
+         reg_write_mem <= reg_write_ex;
+         reg_write_src_mem <= reg_write_src_ex;
+
+         // WB stage (WB)
+         valid_wb <= valid_mem;
+         reg_write_wb <= reg_write_mem;
+         reg_write_src_wb <= reg_write_src_mem;
 
          // output port assertion
          if (output_write == 1) begin
