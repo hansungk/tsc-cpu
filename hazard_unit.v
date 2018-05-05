@@ -28,6 +28,8 @@ module hazard_unit(
    output reg  ir_write,
    output reg  incr_num_inst 
 );
+   parameter RF_SELF_FORWARDING = 1;
+
    reg         use_rs, use_rt;
 
    always @* begin
@@ -56,17 +58,19 @@ module hazard_unit(
                inst_type == `INSTTYPE_LOAD ||
                inst_type == `INSTTYPE_STORE ||
                inst_type == `INSTTYPE_BRANCH;
+
+      // Bypass unnecessary WB check by prefixing !RF_SELF_FORWARDING.
       if ((use_rs && reg_write_ex  && rs_id == write_reg_ex) ||
           (use_rs && reg_write_mem && rs_id == write_reg_mem) ||
-          (use_rs && reg_write_wb  && rs_id == write_reg_wb) ||
+          (!RF_SELF_FORWARDING && use_rs && reg_write_wb  && rs_id == write_reg_wb) ||
           (use_rt && reg_write_ex  && rt_id == write_reg_ex) ||
           (use_rt && reg_write_mem && rt_id == write_reg_mem) ||
-          (use_rt && reg_write_wb  && rt_id == write_reg_wb) ||
-          // stall for LOAD
+          (!RF_SELF_FORWARDING && use_rt && reg_write_wb  && rt_id == write_reg_wb) ||
+          // Load-use stall check
           ((use_rs || use_rt) && d_mem_read_ex && (rs_id == rt_ex || rt_id == rt_ex)) ||
           ((use_rs || use_rt) && d_mem_read_mem && (rs_id == rt_mem || rt_id == rt_mem)) ||
-          ((use_rs || use_rt) && d_mem_read_wb && (rs_id == rt_wb || rt_id == rt_wb))) begin
-         // wait on this instruction
+          (!RF_SELF_FORWARDING && (use_rs || use_rt) && d_mem_read_wb && (rs_id == rt_wb || rt_id == rt_wb))) begin
+         // stall ID
          pc_write = 0;
          ir_write = 0;
          bubblify = 1;

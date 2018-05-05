@@ -71,6 +71,8 @@ module datapath
     output [WORD_SIZE-1:0]     num_inst
 );
 
+   parameter RF_SELF_FORWARDING = 1;
+
    //-------------------------------------------------------------------------//
    // Wires
    //-------------------------------------------------------------------------//
@@ -154,7 +156,7 @@ module datapath
            /*.Cout()*/);
 
    // Register file
-   RF rf(.clk(clk),
+   RF rf(.clk(RF_SELF_FORWARDING ? !clk : clk), // self-forwarding: write at negedge
          .reset_n(reset_n),
          .write(reg_write_wb),
          .addr1(addr1),
@@ -177,30 +179,31 @@ module datapath
                        .inst_type(inst_type));
 
    // Hazard detection unit
-   hazard_unit HU(.opcode(opcode),
-                  .inst_type(inst_type),
-                  .func_code(func_code),
-                  .branch_ex(branch_ex),
-                  .branch_miss(branch_miss),
-                  .rs_id(rs),
-                  .rt_id(rt),
-                  .reg_write_ex(reg_write_ex),
-                  .reg_write_mem(reg_write_mem),
-                  .reg_write_wb(reg_write_wb),
-                  .write_reg_ex(write_reg_ex),
-                  .write_reg_mem(write_reg_mem),
-                  .write_reg_wb(write_reg_wb),
-                  .d_mem_read_ex(d_mem_read_ex),
-                  .d_mem_read_mem(d_mem_read_mem),
-                  .d_mem_read_wb(d_mem_read_wb),
-                  .rt_ex(rt_ex),
-                  .rt_mem(rt_mem),
-                  .rt_wb(rt_wb),
-                  .bubblify(bubblify),
-                  .flush_if(flush_if),
-                  .pc_write(pc_write),
-                  .ir_write(ir_write),
-                  .incr_num_inst(incr_num_inst));
+   hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING))
+   HU (.opcode(opcode),
+       .inst_type(inst_type),
+       .func_code(func_code),
+       .branch_ex(branch_ex),
+       .branch_miss(branch_miss),
+       .rs_id(rs),
+       .rt_id(rt),
+       .reg_write_ex(reg_write_ex),
+       .reg_write_mem(reg_write_mem),
+       .reg_write_wb(reg_write_wb),
+       .write_reg_ex(write_reg_ex),
+       .write_reg_mem(write_reg_mem),
+       .write_reg_wb(write_reg_wb),
+       .d_mem_read_ex(d_mem_read_ex),
+       .d_mem_read_mem(d_mem_read_mem),
+       .d_mem_read_wb(d_mem_read_wb),
+       .rt_ex(rt_ex),
+       .rt_mem(rt_mem),
+       .rt_wb(rt_wb),
+       .bubblify(bubblify),
+       .flush_if(flush_if),
+       .pc_write(pc_write),
+       .ir_write(ir_write),
+       .incr_num_inst(incr_num_inst));
 
    //-------------------------------------------------------------------------//
    // Per-stage wire connections
@@ -280,10 +283,12 @@ module datapath
          npc = pc + 1;
 
          if (pc_write) begin
-            // Handle the case where conditional branch and jump is resolved at the same time.
+            // Handle the case where conditional branch and jump is resolved at
+            // the same time.
             //
-            // Since branch is resolved in EX and jump in ID, PC resolution from branch is always
-            // older than from jump; respect this order.
+            // Since branch is resolved in EX and jump in ID, PC resolution from
+            // branch is always older than from jump and thus should be handled
+            // first. Respect this order.
             if (branch_ex) begin
                pc <= resolved_pc;
             end
@@ -311,6 +316,9 @@ module datapath
          end
 
          // IF stage
+         //
+         // For ir_write = 0, the ID stage is stalled and every IF/ID latches
+         // including IR, pc_id and npc_id should be preserved as is.
          if (ir_write) begin
             npc_id <= npc; // adder for PC
             pc_id <= pc; // for debugging purpose

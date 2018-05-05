@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
-[*] Sat May  5 16:36:32 2018
+[*] Sat May  5 17:02:33 2018
 [*]
 [dumpfile] "/home/stephen/pipelined/pipelined.vcd"
-[dumpfile_mtime] "Sat May  5 16:29:33 2018"
-[dumpfile_size] 391812
+[dumpfile_mtime] "Sat May  5 16:58:41 2018"
+[dumpfile_size] 1551855
 [savefile] "/home/stephen/pipelined/pipelined.gtkw"
-[timestart] 31772000
+[timestart] 0
 [size] 3840 2029
 [pos] -1 -1
-*-16.932030 32689100 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-16.932030 213569800 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
@@ -53,6 +53,9 @@ cpu_TB.UUT.DP.pc_write
 -ID
 @22
 cpu_TB.UUT.DP.pc_id[15:0]
+@23
+cpu_TB.UUT.DP.npc_id[15:0]
+@22
 cpu_TB.UUT.DP.num_inst_id[15:0]
 @c00022
 cpu_TB.UUT.DP.ir[15:0]
@@ -110,9 +113,7 @@ cpu_TB.UUT.DP.branch_ex
 @22
 cpu_TB.UUT.DP.alu_operand_1[15:0]
 cpu_TB.UUT.DP.alu_operand_2[15:0]
-@23
 cpu_TB.UUT.DP.alu_result[15:0]
-@22
 cpu_TB.UUT.DP.b_ex[15:0]
 @28
 cpu_TB.UUT.DP.write_reg_ex[1:0]
