@@ -29,6 +29,8 @@ module datapath
     input [1:0]                pc_src,
     input                      i_or_d,
 
+    // See control_unit.v for docs for each control signals
+
     // ID control signals
     input                      output_write,
 
@@ -37,7 +39,8 @@ module datapath
     input                      alu_src_a,
     input [1:0]                alu_src_b,
     input                      alu_src_swap, 
-    input [1:0]                reg_dst, // resolved in ID, only saved now
+    input [1:0]                reg_dst,
+    input                      branch,
 
     // MEM control signals
     input                      i_mem_read, 
@@ -48,6 +51,7 @@ module datapath
     // WB control signals
     input                      reg_write,
     input [1:0]                reg_write_src,
+    input                      halt_id,
 
     input                      input_ready,
     output reg                 valid_ex,
@@ -63,8 +67,13 @@ module datapath
     output [3:0]               opcode,
     output [5:0]               func_code,
     output [2:0]               inst_type,
+    output                     is_halted, 
     output [WORD_SIZE-1:0]     num_inst
 );
+
+   //-------------------------------------------------------------------------//
+   // Wires
+   //-------------------------------------------------------------------------//
 
    // Decoded info
    wire [1:0]           rs, rt, rd;
@@ -74,9 +83,12 @@ module datapath
    // Hazard signals
    wire                 pc_write, pc_write_cond;
    wire                 ir_write;
-   wire                 bubblify;
-   wire                 flush;
-   wire                 incr_num_inst;
+   wire                 bubblify; // reset all control signals to zero
+   wire                 flush_if; // reset IR to nop
+   wire                 branch_miss;
+   wire                 incr_num_inst; // increase num_inst when it becomes positive that the
+                                       // fetched instruction will not be discarded
+   wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
 
    // register file
    wire [1:0]           addr1, addr2, addr3;
@@ -87,15 +99,14 @@ module datapath
    wire [WORD_SIZE-1:0] alu_operand_1, alu_operand_2; // operands after swap
    wire [WORD_SIZE-1:0] alu_result;
 
-   ////////////////////////
-   // Pipeline registers //
-   ////////////////////////
+   //-------------------------------------------------------------------------//
+   // Pipeline registers
+   //-------------------------------------------------------------------------//
    // don't forget to reset
 
    // unconditional latches
    reg [WORD_SIZE-1:0]  pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
-   reg [WORD_SIZE-1:0]  npc_id; // PC + 4 at IF/ID
-   reg [WORD_SIZE-1:0]  npc_ex; // PC + 4 at ID/EX
+   reg [WORD_SIZE-1:0]  npc, npc_id, npc_ex, npc_mem, npc_wb; // PC + 4 saved for branch resolution and JAL writeback
    reg [WORD_SIZE-1:0]  inst_type_ex, inst_type_mem, inst_type_wb;
    wire [WORD_SIZE-1:0] ir; // instruction register, bound to separate module
    reg [WORD_SIZE-1:0]  MDR_wb; // memory data register
@@ -106,6 +117,11 @@ module datapath
    reg [WORD_SIZE-1:0]  a_ex, b_ex, b_mem;
    reg [WORD_SIZE-1:0]  alu_out_mem, alu_out_wb;
    reg [WORD_SIZE-1:0]  imm_signed_ex, imm_signed_mem, imm_signed_wb;
+   reg                  halt_ex, halt_mem, halt_wb;
+
+   // Even though HLT is detected in ID, we have to wait in-flight instructions
+   // to finish, so defer actual halt to the end of the pipeline.
+   assign is_halted = halt_wb;
 
    // debug purpose: which inst # is being passed through this stage?
    // num_inst_if effectively means "number of instructions fetched"
@@ -114,11 +130,11 @@ module datapath
 
    // control signal latches
    reg                  valid_mem, valid_wb; // valid_ex already declared
+   reg                  branch_ex; // branch instruction in EX?
    reg [3:0]            alu_op_ex;
    reg                  alu_src_a_ex;
    reg [1:0]            alu_src_b_ex;
    reg                  alu_src_swap_ex;
-   reg [1:0]            reg_dst_ex;
    reg                  i_mem_read_ex, i_mem_read_mem;
    reg                  d_mem_read_ex, d_mem_read_mem;
    reg                  i_mem_write_ex, i_mem_write_mem;
@@ -126,9 +142,9 @@ module datapath
    reg                  reg_write_ex, reg_write_mem, reg_write_wb;
    reg [1:0]            reg_write_src_ex, reg_write_src_mem, reg_write_src_wb;
 
-   /////////////////////////
-   // Module declarations //
-   /////////////////////////
+   //-------------------------------------------------------------------------//
+   // Module declarations
+   //-------------------------------------------------------------------------//
 
    ALU alu(.OP(alu_op_ex),
            .A(alu_operand_1),
@@ -150,7 +166,7 @@ module datapath
 
    // Instruction register
    IR ir_module(.clk(clk),
-                .nop(flush || !reset_n),
+                .nop(flush_if || !reset_n),
                 .write(ir_write),
                 .write_data(i_data),
                 .inst(ir));
@@ -163,6 +179,9 @@ module datapath
    // Hazard detection unit
    hazard_unit HU(.opcode(opcode),
                   .inst_type(inst_type),
+                  .func_code(func_code),
+                  .branch_ex(branch_ex),
+                  .branch_miss(branch_miss),
                   .rs_id(rs),
                   .rt_id(rt),
                   .reg_write_ex(reg_write_ex),
@@ -178,14 +197,14 @@ module datapath
                   .rt_mem(rt_mem),
                   .rt_wb(rt_wb),
                   .bubblify(bubblify),
-                  .flush(flush),
+                  .flush_if(flush_if),
                   .pc_write(pc_write),
                   .ir_write(ir_write),
                   .incr_num_inst(incr_num_inst));
 
-   ////////////////////////////////
-   // Per-stage wire connections //
-   ////////////////////////////////
+   //-------------------------------------------------------------------------//
+   // Per-stage wire connections
+   //-------------------------------------------------------------------------//
 
    // IF stage
    assign i_address = pc;
@@ -212,6 +231,8 @@ module datapath
                        /*(alu_src_b_ex == `ALUSRCB_ZERO) ?*/ 0;
    assign alu_operand_1 = alu_src_swap_ex ? alu_temp_2 : alu_temp_1;
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
+   // alu_result == 0 means branch check fail
+   assign resolved_pc = (alu_result == 0) ? npc_ex : npc_ex + imm_signed_ex;
 
    // MEM stage
    assign d_readM = d_mem_read_mem;
@@ -224,11 +245,11 @@ module datapath
    assign writeData = (reg_write_src_wb == `REGWRITESRC_IMM) ? imm_signed_wb : // LHI
                       (reg_write_src_wb == `REGWRITESRC_ALU) ? alu_out_wb :
                       (reg_write_src_wb == `REGWRITESRC_MEM) ? MDR_wb :
-                      /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ pc_wb;
+                      /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ npc_wb;
 
-   ////////////////////////
-   // Register transfers //
-   ////////////////////////
+   //-------------------------------------------------------------------------//
+   // Register transfers
+   //-------------------------------------------------------------------------//
 
    always @(posedge clk) begin
       if (reset_n == 0) begin
@@ -237,6 +258,8 @@ module datapath
          pc <= 0;
          npc_id <= 0;
          npc_ex <= 0;
+         npc_mem <= 0;
+         npc_wb <= 0;
          valid_ex <= 0;
          MDR_wb <= 0;
          a_ex <= 0;
@@ -250,19 +273,48 @@ module datapath
          num_inst_ex <= 0;
       end
       else begin
-         // ----------------------
+         //------------------------//
          // Pipeline stage latches
-         // ----------------------
+         //------------------------//
 
-         // PC update
+         npc = pc + 1;
+
          if (pc_write) begin
-            pc <= (pc_src == `PCSRC_JUMP) ? {pc[15:12], target_addr} :
-                  pc + 1; // TODO: else
+            // Handle the case where conditional branch and jump is resolved at the same time.
+            //
+            // Since branch is resolved in EX and jump in ID, PC resolution from branch is always
+            // older than from jump; respect this order.
+            if (branch_ex) begin
+               pc <= resolved_pc;
+            end
+            else if (inst_type == `INSTTYPE_JUMP) begin // FIXME: 'jump' control signal?
+               if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
+                  pc <= {pc[15:12], target_addr};
+               end
+               else if (opcode == `OPCODE_RTYPE) begin
+                  case (func_code)
+                    `FUNC_JPR, `FUNC_JRL: begin
+                       pc <= data1;
+                    end
+                    default: begin
+                       // unknown jump type
+                    end
+                  endcase
+               end
+               else begin
+                  // unknown jump type
+               end
+            end
+            else begin
+               pc <= npc;
+            end
          end
 
          // IF stage
-         npc_id <= pc + 1; // adder for PC
-         pc_id <= pc;
+         if (ir_write) begin
+            npc_id <= npc; // adder for PC
+            pc_id <= pc; // for debugging purpose
+         end
 
          // ID stage
          npc_ex <= npc_id;
@@ -278,8 +330,10 @@ module datapath
                          (reg_dst == `REGDST_RD) ? rd :
                          /*(reg_dst == `REGDST_2) ?*/ 2'd2;
          imm_signed_ex <= {{8{imm[7]}}, imm};
+         halt_ex <= halt_id;
 
          // EX stage
+         npc_mem <= npc_ex;
          pc_mem <= pc_ex;
          inst_type_mem <= inst_type_ex;
          rs_mem <= rs_ex;
@@ -288,8 +342,10 @@ module datapath
          alu_out_mem <= alu_result;
          write_reg_mem <= write_reg_ex;
          imm_signed_mem <= imm_signed_ex;
+         halt_mem <= halt_ex;
 
          // MEM stage
+         npc_wb <= npc_mem;
          pc_wb <= pc_mem;
          inst_type_wb <= inst_type_mem;
          rs_wb <= rs_mem;
@@ -298,43 +354,28 @@ module datapath
          MDR_wb <= d_data;
          write_reg_wb <= write_reg_mem;
          imm_signed_wb <= imm_signed_mem;
+         halt_wb <= halt_mem;
 
-         // ----------------------
+         //------------------------//
          // Control signal latches
-         // ----------------------
+         //------------------------//
 
-         // EX stage (EX+MEM+WB)
+         // ID stage (EX+MEM+WB)
          // if hazard detected, insert bubbles into pipeline
-         if (bubblify) begin
-            valid_ex <= 0;
-            alu_op_ex <= 0;
-            alu_src_a_ex <= 0;
-            alu_src_b_ex <= 0;
-            alu_src_swap_ex <= 0;
-            reg_dst_ex <= 0;
-            i_mem_read_ex <= 0;
-            d_mem_read_ex <= 0;
-            i_mem_write_ex <= 0;
-            d_mem_write_ex <= 0;
-            reg_write_ex <= 0;
-            reg_write_src_ex <= 0;
-         end
-         else begin
-            valid_ex <= 1;
-            alu_op_ex <= alu_op;
-            alu_src_a_ex <= alu_src_a;
-            alu_src_b_ex <= alu_src_b;
-            alu_src_swap_ex <= alu_src_swap;
-            reg_dst_ex <= reg_dst;
-            i_mem_read_ex <= i_mem_read;
-            d_mem_read_ex <= d_mem_read;
-            i_mem_write_ex <= i_mem_write;
-            d_mem_write_ex <= d_mem_write;
-            reg_write_ex <= reg_write;
-            reg_write_src_ex <= reg_write_src;
-         end
+         valid_ex         <= bubblify ? 0 : 1;
+         branch_ex        <= bubblify ? 0 : branch;
+         alu_op_ex        <= bubblify ? 0 : alu_op;
+         alu_src_a_ex     <= bubblify ? 0 : alu_src_a;
+         alu_src_b_ex     <= bubblify ? 0 : alu_src_b;
+         alu_src_swap_ex  <= bubblify ? 0 : alu_src_swap;
+         i_mem_read_ex    <= bubblify ? 0 : i_mem_read;
+         d_mem_read_ex    <= bubblify ? 0 : d_mem_read;
+         i_mem_write_ex   <= bubblify ? 0 : i_mem_write;
+         d_mem_write_ex   <= bubblify ? 0 : d_mem_write;
+         reg_write_ex     <= bubblify ? 0 : reg_write;
+         reg_write_src_ex <= bubblify ? 0 : reg_write_src;
 
-         // MEM stage (MEM+WB)
+         // EX stage (MEM+WB)
          valid_mem <= valid_ex;
          i_mem_read_mem <= i_mem_read_ex;
          d_mem_read_mem <= d_mem_read_ex;
@@ -343,7 +384,7 @@ module datapath
          reg_write_mem <= reg_write_ex;
          reg_write_src_mem <= reg_write_src_ex;
 
-         // WB stage (WB)
+         // MEM stage (WB)
          valid_wb <= valid_mem;
          reg_write_wb <= reg_write_mem;
          reg_write_src_wb <= reg_write_src_mem;

@@ -10,6 +10,7 @@
 `define FUNC_JRL 6'd26
 `define FUNC_WWD 6'd28
 `define FUNC_HLT 6'd29
+`define FUNC_NOP 6'b111111
 
 `define OPCODE_ADI 4'd4
 `define OPCODE_ORI 4'd5

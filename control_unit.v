@@ -34,9 +34,7 @@ module control_unit(
     input [3:0]      opcode,
     input [5:0]      func_code,
     input [2:0]      inst_type, // instruction type (see InstTypeDecoder module)
-    output reg       valid, // not bubble?
-    output reg       pc_write, // update pc
-    output reg       pc_write_cond, // update pc if branch taken
+    output reg       branch, // is this a conditional branch?
     output reg [1:0] pc_src, // 0: PC+4, 1: jump, 2: branch, 3: reg (JPR)
     output reg       i_or_d, // memory address from 0: PC, 1: alu_out
     output reg       i_mem_read, // command memory read 
@@ -46,7 +44,7 @@ module control_unit(
     output reg       ir_write, // latch instruction memory
     output [3:0]     alu_op,
     output reg       alu_src_a, // 0: PC, 1: A_ex
-    output reg [1:0] alu_src_b, // 0: 1 (sequential / branch untaken),
+    output reg [1:0] alu_src_b, // 0: 1 (sequential / branchuntaken),
                                 // 1: B_ex,
                                 // 2: sign-extended immediate
                                 // 3: 0 (for TCP & BGZ & BLZ)
@@ -61,16 +59,14 @@ module control_unit(
                                                // 3: PC (JAL)
     output reg [1:0] reg_dst, // write to 0: rt, 1: rd, 2: $2 (JAL)
     output reg       output_write, // write to output port
-    output           is_halted
+    output           halt_id // HLT detected in ID
 );
 
    reg ALUMode; // 0: address calculation, 1: opcode-specific arithmetics
 
    wire      isTCP;
-   wire      isHLT;
    assign isTCP = (opcode == `OPCODE_RTYPE && func_code == `FUNC_TCP);
-   assign isHLT = (opcode == `OPCODE_RTYPE && func_code == `FUNC_HLT);
-   assign is_halted = isHLT;
+   assign halt_id = (opcode == `OPCODE_RTYPE && func_code == `FUNC_HLT);
 
    // ALU control logic. See alu_control.v
    alu_control ALUControl(.opcode(opcode), .func_code(func_code),
@@ -80,18 +76,12 @@ module control_unit(
       // FIXME Comment here
 
       // defaults to NOP
-      valid = 0;
+      branch = 0;
       i_or_d = 0;
       i_mem_read = 0;
       d_mem_read = 0;
       i_mem_write = 0;
       d_mem_write = 0;
-
-      // UNUSED
-      ir_write = 1;
-      pc_write = 1;
-
-      pc_write_cond = 0;
       pc_src = `PCSRC_SEQ;
       reg_dst = `REGDST_RD;
       reg_write = 0; // only write for RTYPE and LOAD
@@ -109,8 +99,6 @@ module control_unit(
       // (e.g. reg_write_src, reg_dst)
       case (inst_type)
         `INSTTYPE_RTYPE: begin
-           pc_write = 1;
-
            reg_write = 1;
            reg_write_src = `REGWRITESRC_ALU;
            reg_dst = (opcode == `OPCODE_ADI || opcode == `OPCODE_ORI) ? `REGDST_RT : `REGDST_RD;
@@ -153,6 +141,8 @@ module control_unit(
            d_mem_write = 1;
         end
         `INSTTYPE_BRANCH: begin
+           branch = 1;
+
            // compute branch outcome
            ALUMode = 1;
            alu_src_a = `ALUSRCA_REG;
@@ -162,7 +152,6 @@ module control_unit(
            alu_src_swap = opcode == `OPCODE_BLZ;
 
            pc_src = `PCSRC_BRANCH;
-           pc_write_cond = 1;
         end
         `INSTTYPE_JUMP: begin
            pc_src = `PCSRC_JUMP;
@@ -176,7 +165,6 @@ module control_unit(
            // write $rs to PC for JPR
            else if (opcode == `OPCODE_RTYPE && func_code == `FUNC_JPR) begin
               pc_src = `PCSRC_REG;
-              pc_write = 1;
            end
            // do both for JRL
            else if (opcode == `OPCODE_RTYPE && func_code == `FUNC_JRL) begin
@@ -185,7 +173,6 @@ module control_unit(
               reg_write = 1;
 
               pc_src = `PCSRC_REG;
-              pc_write = 1;
            end
            // end
         end

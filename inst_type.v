@@ -10,14 +10,17 @@ module InstTypeDecoder(
 );
    always @(*) begin
       case (opcode)
-        `OPCODE_RTYPE,`OPCODE_ADI, `OPCODE_ORI: begin
+        `OPCODE_RTYPE: begin
            case (func_code)
              `FUNC_JPR: inst_type = `INSTTYPE_JUMP;
              `FUNC_JRL: inst_type = `INSTTYPE_JUMP;
              `FUNC_WWD: inst_type = `INSTTYPE_OUTPUT;
-             6'b111111:  inst_type = `INSTTYPE_NOP; // all 1 is reserved for nop
-             default: inst_type = `INSTTYPE_RTYPE;
+             `FUNC_NOP: inst_type = `INSTTYPE_NOP; // all 1 is reserved for nop
+             default: inst_type = `INSTTYPE_RTYPE; // ADD, SUB, AND, etc.
            endcase
+        end
+        `OPCODE_ADI, `OPCODE_ORI: begin
+           inst_type = `INSTTYPE_RTYPE;
         end
         `OPCODE_LHI, `OPCODE_LWD: begin
            inst_type = `INSTTYPE_LOAD;

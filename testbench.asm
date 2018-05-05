@@ -89,7 +89,7 @@ ENTRY:		LHI	$0, 0
 		LWD	$0, $2, VAR1
 		WWD	$0	; TEST #12-1 : LWD (= 0x0001)
 		LWD	$1, $2, VAR2
-		WWD	$1	; TEST #12-2 : LWD (= 0xFFFF) ;4c
+		WWD	$1	; TEST #12-2 : LWD (= 0xFFFF)
 
 		SWD	$1, $2, VAR1
 		SWD	$0, $2, VAR2
@@ -105,7 +105,7 @@ JMP0:		WWD	$0	; TEST #14-1 : JMP (= 0xFFFF)
 		HLT
 JMP1:		WWD	$1	; TEST #14-2 : JMP (= 0x0001)
 
-		BNE	$2, $3, BNE1
+		BNE	$2, $3, BNE1 ;7a
 		JMP	BNE2
 BNE1:		HLT
 BNE2:		WWD	$0	; TEST #15-1 : BNE (= 0xFFFF)
@@ -142,7 +142,7 @@ BGZ5:		WWD	$0	; TEST #17-3 : BGZ (= 0xFFFF)
 BLZ1:		WWD	$1	; TEST #18-1 : BLZ (= 0x0001)
 
 		BLZ	$1, BLZ2
-		JMP	BLZ3
+		JMP	BLZ3 	; #97
 BLZ2:		HLT
 BLZ3:		WWD	$0	; TEST #18-2 : BLZ (= 0xFFFF)
 
@@ -151,10 +151,10 @@ BLZ3:		WWD	$0	; TEST #18-2 : BLZ (= 0xFFFF)
 BLZ4:		HLT
 BLZ5:		WWD	$1	; TEST #18-3 : BLZ (= 0x0001)
 
-		JAL	SIMPLE1
+		JAL	SIMPLE1 ; #9e
 		WWD	$0	; TEST #19-1 : JAL & JPR (= 0xFFFF)
 
-		JAL	SIMPLE2
+		JAL	SIMPLE2 ; #a0
 		HLT
 		WWD	$1	; TEST #19-2 : JAL & JPR (= 0x0001)
 
@@ -163,33 +163,33 @@ BLZ5:		WWD	$1	; TEST #18-3 : BLZ (= 0x0001)
 
 		LHI	$0, 0
 		ADI	$0, $0, 5
-		JAL	FIB
+		JAL	FIB	; #a7
 		WWD	$0	; TEST #19-3 : JAL & JPR (= 0x0008)
 
-		JMP	PREFIB1
+		JMP	PREFIB1	; #a9
 PREFIB2:	ADI	$1, $2, 0
 		JRL	$1
 		WWD	$0	; TEST #20 : JAL & JRL & JPR (= 0x0022)
 
-		HLT		; FINISHED
+		HLT		; FINISHED #ad
 
-SIMPLE2:	ADI	$2, $2, 1
-SIMPLE1:	JPR	$2
+SIMPLE2:	ADI	$2, $2, 1 ; #ae
+SIMPLE1:	JPR	$2	  ; #af
 		HLT
 
 PREFIB1:	JAL	PREFIB2
 
-FIB:		ADI	$1, $0, -1
-		BGZ	$1, FIBRECUR
+FIB:		ADI	$1, $0, -1 ; #b2
+		BGZ	$1, FIBRECUR ;#b3
 		LHI	$0, 0
 		ORI	$0, $0, 1
-		JPR	$2
+		JPR	$2	; #b6
 		HLT
-FIBRECUR:	SWD	$2, $3, 0
+FIBRECUR:	SWD	$2, $3, 0 ; #b8
 		SWD	$0, $3, 1		
 		ADI	$3, $3, 2
 		ADI	$0, $0, -2
-		JAL	FIB
+		JAL	FIB	; #bc
 		LWD	$1, $3, -1
 		SWD	$0, $3, -1
 		ADI	$0, $1, -1

@@ -27,6 +27,7 @@ module cpu(
    // Datapath - control Unit
    wire        clk;
    wire        reset_n;
+   wire        branch;
    wire        i_or_d;
    wire        valid_ex;
    wire        bubblify;
@@ -40,12 +41,14 @@ module cpu(
    wire [1:0]  pc_src, alu_src_b;
    wire        alu_src_swap;
    wire [3:0]  alu_op;
+   wire        halt_id;
 
    control_unit Control (.clk (clk),
 			 .reset_n (reset_n),
 			 .opcode (opcode),
 			 .func_code (func_code),
                          .inst_type(inst_type),
+                         .branch(branch),
 			 .pc_src (pc_src),
 			 .i_or_d (i_or_d),
 			 .i_mem_read(i_mem_read),
@@ -61,7 +64,7 @@ module cpu(
 			 .reg_write_src (reg_write_src),
 			 .reg_dst (reg_dst),
 			 .output_write (output_write),
-			 .is_halted (is_halted)); 
+			 .halt_id (halt_id)); 
 
    datapath #(.WORD_SIZE (`WORD_SIZE)) 
    DP (
@@ -69,18 +72,20 @@ module cpu(
        .reset_n (reset_n),
        .pc_src (pc_src),
        .i_or_d (i_or_d),
-       .i_mem_read (i_mem_read),
-       .d_mem_read (d_mem_read),
-       .i_mem_write (i_mem_write),
-       .d_mem_write (d_mem_write),
+       .output_write (output_write),
        .alu_op (alu_op),
        .alu_src_a (alu_src_a),
        .alu_src_b (alu_src_b),
        .alu_src_swap (alu_src_swap),
        .reg_dst (reg_dst),
+       .branch(branch),
+       .i_mem_read (i_mem_read),
+       .d_mem_read (d_mem_read),
+       .i_mem_write (i_mem_write),
+       .d_mem_write (d_mem_write),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
-       .output_write (output_write),
+       .halt_id(halt_id),
        .input_ready (input_ready),
        .valid_ex (valid_ex),
        .i_address (i_address),
@@ -95,6 +100,7 @@ module cpu(
        .opcode(opcode),
        .func_code (func_code),
        .inst_type (inst_type),
+       .is_halted(is_halted),
        .num_inst (num_inst)
        );
 endmodule
