@@ -97,7 +97,7 @@ module hazard_unit(
 
          // branch_miss is always 1 on no prediction, so this becomes
          // unconditional stall-on-branch.
-         if (branch_ex && branch_miss) begin
+         if (branch_miss) begin
             // On branch miss, flush IF and bubblify ID, effectively erasing two
             // instructions.
             bubblify = 1;

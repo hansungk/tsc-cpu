@@ -256,8 +256,8 @@ module datapath
    // Data forwarding (see forwarding_unit.v)
 
    // Since either ALUOut or immediate value can be forwarded from the MEM stage
-   // (LHI), we need to check which will be eventually written back using
-   // reg_write_src_mem.
+   // (LHI), we need to check which is going to be eventually written back using
+   // reg_write_src_mem, and forward the right one.
    assign mem_forwarded = (reg_write_src_mem == `REGWRITESRC_IMM) ? imm_signed_mem
                           : alu_out_mem;
 
@@ -269,7 +269,7 @@ module datapath
                         /*(rt_forward_src == `FORWARD_SRC_RF) ?*/ b_ex;
 
    assign alu_temp_1 = (alu_src_a_ex == `ALUSRCA_PC) ? pc :
-                     /*(alu_src_a_ex == `ALUSRCA_REG) ?*/ a_forwarded;
+                       /*(alu_src_a_ex == `ALUSRCA_REG) ?*/ a_forwarded;
    assign alu_temp_2 = (alu_src_b_ex == `ALUSRCB_ONE) ? 1 :
                        (alu_src_b_ex == `ALUSRCB_REG) ? b_forwarded :
                        (alu_src_b_ex == `ALUSRCB_IMM) ? imm_signed_ex :
@@ -279,7 +279,7 @@ module datapath
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
    assign branch_taken = alu_result != 0; // alu_result == 0 means branch check fail
    // Always miss if there is no prediction.
-   assign branch_miss = PREDICT_ALWAYS_UNTAKEN ? branch_taken : 1;
+   assign branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? branch_taken : 1);
    assign resolved_pc = branch_taken ? npc_ex + imm_signed_ex : npc_ex;
 
    // MEM stage
@@ -335,7 +335,7 @@ module datapath
             // Since branch is resolved in EX and jump in ID, PC resolution from
             // branch is always older than from jump and thus should be handled
             // first. Respect this order.
-            if (branch_ex && branch_miss) begin
+            if (branch_miss) begin
                pc <= resolved_pc;
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;

@@ -34,6 +34,7 @@ module cpu(
    parameter RF_SELF_FORWARDING = 1;
 
    // Configures whether data forwarding is enabled.
+   // Currently not working with RF_SELF_FORWARDING disabled (SWD-LWD).
    parameter DATA_FORWARDING = 1;
 
    // Enables always untaken, flush-on-miss branch prediction.
