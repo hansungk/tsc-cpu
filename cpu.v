@@ -27,8 +27,6 @@ module cpu(
    // Datapath - control Unit
    wire        clk;
    wire        reset_n;
-   wire        pc_write;
-   wire        pc_write_cond;
    wire        i_or_d;
    wire        valid_ex;
    wire        bubblify;
@@ -50,10 +48,10 @@ module cpu(
                          .inst_type(inst_type),
 			 .pc_src (pc_src),
 			 .i_or_d (i_or_d),
-			 .i_mem_read(i_readM),
-			 .d_mem_read(d_readM),
-			 .i_mem_write(i_writeM),
-			 .d_mem_write(d_writeM),
+			 .i_mem_read(i_mem_read),
+			 .d_mem_read(d_mem_read),
+			 .i_mem_write(i_mem_write),
+			 .d_mem_write(d_mem_write),
 			 .ir_write (ir_write),
 			 .alu_op (alu_op),
 			 .alu_src_a (alu_src_a),
@@ -65,27 +63,16 @@ module cpu(
 			 .output_write (output_write),
 			 .is_halted (is_halted)); 
 
-   hazard_unit Hazard (.inst_type(inst_type),
-		       .valid_ex(valid_ex),
-		       .bubblify(bubblify),
-		       .flush(flush),
-		       .pc_write(pc_write),
-		       .ir_write(ir_write),
-                       .incr_num_inst(incr_num_inst));
-
    datapath #(.WORD_SIZE (`WORD_SIZE)) 
    DP (
        .clk(clk),
        .reset_n (reset_n),
-       .pc_write (pc_write),
-       .pc_write_cond (pc_write_cond),
        .pc_src (pc_src),
        .i_or_d (i_or_d),
-       .bubblify(bubblify),
-       .flush(flush),
-       .i_mem_write (i_writeM),
-       .d_mem_write (d_writeM),
-       .ir_write (ir_write),
+       .i_mem_read (i_mem_read),
+       .d_mem_read (d_mem_read),
+       .i_mem_write (i_mem_write),
+       .d_mem_write (d_mem_write),
        .alu_op (alu_op),
        .alu_src_a (alu_src_a),
        .alu_src_b (alu_src_b),
@@ -93,7 +80,6 @@ module cpu(
        .reg_dst (reg_dst),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
-       .incr_num_inst (incr_num_inst),
        .output_write (output_write),
        .i_data (i_data),
        .d_data (d_data),
@@ -101,6 +87,8 @@ module cpu(
        .valid_ex (valid_ex),
        .i_address (i_address),
        .d_address (d_address),
+       .i_readM (i_readM),
+       .d_readM (d_readM),
        .output_port (output_port),
        .opcode(opcode),
        .func_code (func_code),

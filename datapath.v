@@ -26,15 +26,8 @@ module datapath
   #(parameter WORD_SIZE = `WORD_SIZE)
    (input                      clk,
     input                      reset_n,
-    input                      pc_write,
-    input                      pc_write_cond,
     input [1:0]                pc_src,
     input                      i_or_d,
-    input                      bubblify,
-    input                      flush,
-
-    // IF constrol signals
-    input                      ir_write,
 
     // ID control signals
     input                      output_write,
@@ -56,8 +49,6 @@ module datapath
     input                      reg_write,
     input [1:0]                reg_write_src,
 
-    input                      incr_num_inst,
-
     inout [WORD_SIZE-1:0]      i_data,
     inout [WORD_SIZE-1:0]      d_data,
 
@@ -65,6 +56,10 @@ module datapath
     output reg                 valid_ex,
     output [WORD_SIZE-1:0]     i_address,
     output [WORD_SIZE-1:0]     d_address,
+    output                     i_readM,
+    output                     d_readM,
+    output                     i_writeM,
+    output                     d_writeM,
     output reg [WORD_SIZE-1:0] output_port,
     output [3:0]               opcode,
     output [5:0]               func_code,
@@ -75,7 +70,14 @@ module datapath
    // Decoded info
    wire [1:0]           rs, rt, rd;
    wire [7:0]           imm;
-   wire [11:0]          target_addr;                    
+   wire [11:0]          target_addr;
+
+   // Hazard signals
+   wire                 pc_write, pc_write_cond;
+   wire                 ir_write;
+   wire                 bubblify;
+   wire                 flush;
+   wire                 incr_num_inst;
 
    // register file
    wire [1:0]           addr1, addr2, addr3;
@@ -98,11 +100,12 @@ module datapath
    reg [WORD_SIZE-1:0]  inst_type_ex, inst_type_mem, inst_type_wb;
    wire [WORD_SIZE-1:0] ir; // instruction register, bound to separate module
    reg [WORD_SIZE-1:0]  MDR_wb; // memory data register
-   reg [WORD_SIZE-1:0]  rt_ex; // for reg_dst
-   reg [WORD_SIZE-1:0]  rd_ex; // for reg_dst
+   reg [1:0]            rs_ex, rs_mem, rs_wb; // for stall/forward detection
+   reg [1:0]            rt_ex, rt_mem, rt_wb; // for stall/forward detection
+   reg [1:0]            rd_ex; // for write_reg
+   reg [1:0]            write_reg_ex, write_reg_mem, write_reg_wb;
    reg [WORD_SIZE-1:0]  a_ex, b_ex, b_mem;
    reg [WORD_SIZE-1:0]  alu_out_mem, alu_out_wb;
-   reg [WORD_SIZE-1:0]  write_reg_mem, write_reg_wb;
    reg [WORD_SIZE-1:0]  imm_signed_ex, imm_signed_mem, imm_signed_wb;
 
    // debug purpose: which inst # is being passed through this stage?
@@ -122,7 +125,7 @@ module datapath
    reg                  i_mem_write_ex, i_mem_write_mem;
    reg                  d_mem_write_ex, d_mem_write_mem;
    reg                  reg_write_ex, reg_write_mem, reg_write_wb;
-   reg                  reg_write_src_ex, reg_write_src_mem, reg_write_src_wb;
+   reg [1:0]            reg_write_src_ex, reg_write_src_mem, reg_write_src_wb;
 
    /////////////////////////
    // Module declarations //
@@ -158,13 +161,37 @@ module datapath
                        .func_code(func_code),
                        .inst_type(inst_type));
 
+   // Hazard detection unit
+   hazard_unit HU(.opcode(opcode),
+                  .inst_type(inst_type),
+                  .rs_id(rs),
+                  .rt_id(rt),
+                  .reg_write_ex(reg_write_ex),
+                  .reg_write_mem(reg_write_mem),
+                  .reg_write_wb(reg_write_wb),
+                  .write_reg_ex(write_reg_ex),
+                  .write_reg_mem(write_reg_mem),
+                  .write_reg_wb(write_reg_wb),
+                  .d_mem_read_ex(d_mem_read_ex),
+                  .d_mem_read_mem(d_mem_read_mem),
+                  .d_mem_read_wb(d_mem_read_wb),
+                  .rt_ex(rt_ex),
+                  .rt_mem(rt_mem),
+                  .rt_wb(rt_wb),
+                  .bubblify(bubblify),
+                  .flush(flush),
+                  .pc_write(pc_write),
+                  .ir_write(ir_write),
+                  .incr_num_inst(incr_num_inst));
+
    ///////////////////////
    // Per-stage wirings //
    ///////////////////////
 
    // IF stage
    assign i_address = pc;
-   assign d_address = alu_out_mem;
+   assign i_readM = i_mem_read;
+   assign i_writeM = 0; // no instruction write
 
    // ID stage
    assign opcode = ir[15:12];
@@ -188,12 +215,15 @@ module datapath
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
 
    // MEM stage
-   assign d_data = d_mem_write ? b_ex : {WORD_SIZE{1'bz}};
+   assign d_readM = d_mem_read_mem;
+   assign d_writeM = d_mem_write_mem;
+   assign d_address = alu_out_mem;
+   assign d_data = d_mem_write_mem ? b_mem : {WORD_SIZE{1'bz}};
 
    // WB stage
    assign addr3 = write_reg_wb;
    assign writeData = (reg_write_src_wb == `REGWRITESRC_IMM) ? imm_signed_wb : // LHI
-                      (reg_write_src_wb == `REGWRITESRC_REG) ? alu_out_wb :
+                      (reg_write_src_wb == `REGWRITESRC_ALU) ? alu_out_wb :
                       (reg_write_src_wb == `REGWRITESRC_MEM) ? MDR_wb :
                       /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ pc_wb;
 
@@ -234,31 +264,37 @@ module datapath
          // IF stage
          npc_id <= pc + 1; // adder for PC
          pc_id <= pc;
-         num_inst_id <= num_inst_if;
 
          // ID stage
          npc_ex <= npc_id;
          pc_ex <= pc_id;
          num_inst_ex <= num_inst_id;
          inst_type_ex <= inst_type;
-         a_ex <= data1;
-         b_ex <= data2;
+         rs_ex <= rs;
          rt_ex <= rt;
          rd_ex <= rd;
+         a_ex <= data1;
+         b_ex <= data2;
+         write_reg_ex <= (reg_dst == `REGDST_RT) ? rt :
+                         (reg_dst == `REGDST_RD) ? rd :
+                         /*(reg_dst == `REGDST_2) ?*/ 2'd2;
          imm_signed_ex <= {{8{imm[7]}}, imm};
 
          // EX stage
          pc_mem <= pc_ex;
          inst_type_mem <= inst_type_ex;
+         rs_mem <= rs_ex;
+         rt_mem <= rt_ex;
          alu_out_mem <= alu_result;
-         write_reg_mem <= (reg_dst == `REGDST_RT) ? rt_ex :
-                          (reg_dst == `REGDST_RD) ? rd_ex :
-                          /*(reg_dst == `REGDST_2) ?*/ 2'd2;
+         write_reg_mem <= write_reg_ex;
          imm_signed_mem <= imm_signed_ex;
 
          // MEM stage
          pc_wb <= pc_mem;
          inst_type_wb <= inst_type_mem;
+         rs_wb <= rs_mem;
+         rt_wb <= rt_mem;
+         alu_out_wb <= alu_out_mem;
          MDR_wb <= d_data;
          write_reg_wb <= write_reg_mem;
          imm_signed_wb <= imm_signed_mem;
@@ -323,6 +359,7 @@ module datapath
          // setting the right value for each stage
          if (incr_num_inst) begin
             num_inst_if <= num_inst_if + 1;
+            num_inst_id <= num_inst_if;
          end
       end
    end

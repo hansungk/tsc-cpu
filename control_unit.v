@@ -112,7 +112,7 @@ module control_unit(
            pc_write = 1;
 
            reg_write = 1;
-           reg_write_src = (opcode == `OPCODE_ADI) ? `REGWRITESRC_IMM : `REGWRITESRC_REG;
+           reg_write_src = `REGWRITESRC_ALU;
            reg_dst = (opcode == `OPCODE_ADI || opcode == `OPCODE_ORI) ? `REGDST_RT : `REGDST_RD;
 
            // switch to arithmetic mode from address calc mode
