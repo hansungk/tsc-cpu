@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
-[*] Sat May  5 12:04:34 2018
+[*] Sat May  5 12:43:34 2018
 [*]
 [dumpfile] "/home/stephen/pipelined/pipelined.vcd"
-[dumpfile_mtime] "Sat May  5 11:31:35 2018"
-[dumpfile_size] 104156
+[dumpfile_mtime] "Sat May  5 12:43:13 2018"
+[dumpfile_size] 122774
 [savefile] "/home/stephen/pipelined/pipelined.gtkw"
-[timestart] 17867500
+[timestart] 20067500
 [size] 3840 2029
 [pos] -1 -1
-*-16.932030 18977200 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-16.932030 21222200 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
@@ -51,7 +51,7 @@ cpu_TB.UUT.DP.pc[15:0]
 cpu_TB.UUT.DP.pc_write
 @200
 -ID
-@23
+@22
 cpu_TB.UUT.DP.num_inst_id[15:0]
 @c00022
 cpu_TB.UUT.DP.ir[15:0]
@@ -80,20 +80,27 @@ cpu_TB.UUT.DP.func_code[5:0]
 @28
 cpu_TB.UUT.DP.flush
 cpu_TB.UUT.DP.addr1[1:0]
+cpu_TB.UUT.DP.addr2[1:0]
 @22
 cpu_TB.UUT.DP.data1[15:0]
+cpu_TB.UUT.DP.data2[15:0]
 @28
 cpu_TB.UUT.DP.reg_write
+cpu_TB.UUT.DP.reg_write_src[1:0]
 @200
 -EX
 @22
 cpu_TB.UUT.DP.alu_operand_1[15:0]
-cpu_TB.UUT.DP.a_ex[15:0]
 cpu_TB.UUT.DP.alu_operand_2[15:0]
+cpu_TB.UUT.DP.b_ex[15:0]
 @200
 -MEM
 @22
 cpu_TB.UUT.DP.alu_out_mem[15:0]
+@28
+cpu_TB.UUT.DP.d_mem_write_mem
+@22
+cpu_TB.UUT.DP.b_mem[15:0]
 @200
 -WB
 @28

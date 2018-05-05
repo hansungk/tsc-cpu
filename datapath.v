@@ -49,9 +49,6 @@ module datapath
     input                      reg_write,
     input [1:0]                reg_write_src,
 
-    inout [WORD_SIZE-1:0]      i_data,
-    inout [WORD_SIZE-1:0]      d_data,
-
     input                      input_ready,
     output reg                 valid_ex,
     output [WORD_SIZE-1:0]     i_address,
@@ -60,6 +57,8 @@ module datapath
     output                     d_readM,
     output                     i_writeM,
     output                     d_writeM,
+    inout [WORD_SIZE-1:0]      i_data,
+    inout [WORD_SIZE-1:0]      d_data,
     output reg [WORD_SIZE-1:0] output_port,
     output [3:0]               opcode,
     output [5:0]               func_code,
@@ -111,7 +110,7 @@ module datapath
    // debug purpose: which inst # is being passed through this stage?
    // num_inst_if effectively means "number of instructions fetched"
    reg [WORD_SIZE-1:0]  num_inst_if, num_inst_id, num_inst_ex;
-   assign num_inst = num_inst_ex;
+   assign num_inst = num_inst_ex; // num_inst is the inst passing through EX right now
 
    // control signal latches
    reg                  valid_mem, valid_wb; // valid_ex already declared
@@ -156,7 +155,7 @@ module datapath
                 .write_data(i_data),
                 .inst(ir));
 
-   // Instruction Type Decoder
+   // Instruction type decoder
    InstTypeDecoder itd(.opcode(opcode),
                        .func_code(func_code),
                        .inst_type(inst_type));
@@ -184,9 +183,9 @@ module datapath
                   .ir_write(ir_write),
                   .incr_num_inst(incr_num_inst));
 
-   ///////////////////////
-   // Per-stage wirings //
-   ///////////////////////
+   ////////////////////////////////
+   // Per-stage wire connections //
+   ////////////////////////////////
 
    // IF stage
    assign i_address = pc;
@@ -208,9 +207,9 @@ module datapath
    assign alu_temp_1 = (alu_src_a_ex == `ALUSRCA_PC) ? pc :
                      /*(alu_src_a_ex == `ALUSRCA_REG) ?*/ a_ex;
    assign alu_temp_2 = (alu_src_b_ex == `ALUSRCB_ONE) ? 1 :
-                     (alu_src_b_ex == `ALUSRCB_REG) ? b_ex :
-                     (alu_src_b_ex == `ALUSRCB_IMM) ? imm_signed_ex :
-                     /*(alu_src_b_ex == `ALUSRCB_ZERO) ?*/ 0;
+                       (alu_src_b_ex == `ALUSRCB_REG) ? b_ex :
+                       (alu_src_b_ex == `ALUSRCB_IMM) ? imm_signed_ex :
+                       /*(alu_src_b_ex == `ALUSRCB_ZERO) ?*/ 0;
    assign alu_operand_1 = alu_src_swap_ex ? alu_temp_2 : alu_temp_1;
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
 
@@ -285,6 +284,7 @@ module datapath
          inst_type_mem <= inst_type_ex;
          rs_mem <= rs_ex;
          rt_mem <= rt_ex;
+         b_mem <= b_ex;
          alu_out_mem <= alu_result;
          write_reg_mem <= write_reg_ex;
          imm_signed_mem <= imm_signed_ex;

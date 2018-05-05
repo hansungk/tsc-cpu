@@ -144,7 +144,6 @@ module control_unit(
            d_mem_read = (opcode != `OPCODE_LHI); // only issue read when it's not LHI
         end
         `INSTTYPE_STORE: begin
-
            // calculate memory write address
            alu_src_a = `ALUSRCA_REG;
            alu_src_b = `ALUSRCB_IMM;
