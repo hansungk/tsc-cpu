@@ -29,8 +29,9 @@ module hazard_unit(
    output reg  incr_num_inst 
 );
    parameter RF_SELF_FORWARDING = 1;
+   parameter DATA_FORWARDING = 1;
 
-   reg         use_rs, use_rt;
+   reg         use_rs, use_rs_at_id, use_rt;
 
    always @* begin
       // defaults
@@ -48,10 +49,11 @@ module hazard_unit(
       // check register for BEQ, jump target register for JPR/JAL, etc).
       // ----------------------------------------------------------------------//
 
+      use_rs_at_id = (opcode == `OPCODE_RTYPE && (func_code == `FUNC_JPR || func_code == `FUNC_JRL)); // JPR and JRL uses rs at ID
       use_rs = inst_type == `INSTTYPE_RTYPE ||
                (inst_type == `INSTTYPE_LOAD && opcode != `OPCODE_LHI) || // LHI only uses rt
                inst_type == `INSTTYPE_STORE ||
-               (opcode == `OPCODE_RTYPE && (func_code == `FUNC_JPR || func_code == `FUNC_JRL)) || // JPR and JRL uses rs
+               use_rs_at_id ||
                inst_type == `INSTTYPE_BRANCH ||
                inst_type == `INSTTYPE_OUTPUT;
       use_rt = (inst_type == `INSTTYPE_RTYPE && opcode != `OPCODE_ADI)|| // ADI only uses rs
@@ -60,15 +62,22 @@ module hazard_unit(
                inst_type == `INSTTYPE_BRANCH;
 
       // Bypass unnecessary WB check by prefixing !RF_SELF_FORWARDING.
-      if ((use_rs && reg_write_ex  && rs_id == write_reg_ex) ||
-          (use_rs && reg_write_mem && rs_id == write_reg_mem) ||
-          (!RF_SELF_FORWARDING && use_rs && reg_write_wb  && rs_id == write_reg_wb) ||
-          (use_rt && reg_write_ex  && rt_id == write_reg_ex) ||
-          (use_rt && reg_write_mem && rt_id == write_reg_mem) ||
-          (!RF_SELF_FORWARDING && use_rt && reg_write_wb  && rt_id == write_reg_wb) ||
+      if (!DATA_FORWARDING &&
+          ((                       use_rs && reg_write_ex  && rs_id == write_reg_ex) ||
+           (                       use_rs && reg_write_mem && rs_id == write_reg_mem) ||
+           (!RF_SELF_FORWARDING && use_rs && reg_write_wb  && rs_id == write_reg_wb) ||
+           (use_rt && reg_write_ex  && rt_id == write_reg_ex) ||
+           (use_rt && reg_write_mem && rt_id == write_reg_mem) ||
+           (!RF_SELF_FORWARDING && use_rt && reg_write_wb  && rt_id == write_reg_wb))
+          ||
+          // produce-JUMP stall check (JPR, JRL)
+          ((                       use_rs_at_id && reg_write_ex  && rs_id == write_reg_ex) ||
+           (                       use_rs_at_id && reg_write_mem && rs_id == write_reg_mem) ||
+           (!RF_SELF_FORWARDING && use_rs_at_id && reg_write_wb  && rs_id == write_reg_wb))
+          ||
           // Load-use stall check
           ((use_rs || use_rt) && d_mem_read_ex && (rs_id == rt_ex || rt_id == rt_ex)) ||
-          ((use_rs || use_rt) && d_mem_read_mem && (rs_id == rt_mem || rt_id == rt_mem)) ||
+          (!DATA_FORWARDING && (use_rs || use_rt) && d_mem_read_mem && (rs_id == rt_mem || rt_id == rt_mem)) ||
           (!RF_SELF_FORWARDING && (use_rs || use_rt) && d_mem_read_wb && (rs_id == rt_wb || rt_id == rt_wb))) begin
          // stall ID
          pc_write = 0;
@@ -76,9 +85,9 @@ module hazard_unit(
          bubblify = 1;
       end
       else begin
-         //----------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
          // Control hazard handling
-         //----------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
 
          if (inst_type == `INSTTYPE_JUMP ||
              inst_type == `INSTTYPE_BRANCH) begin

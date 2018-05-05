@@ -61,3 +61,7 @@
 `define REGDST_RT 0
 `define REGDST_RD 1
 `define REGDST_2 2
+
+`define FORWARD_SRC_MEM 0
+`define FORWARD_SRC_WB 1
+`define FORWARD_SRC_RF 2

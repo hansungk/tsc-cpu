@@ -70,8 +70,8 @@ module datapath
     output                     is_halted, 
     output [WORD_SIZE-1:0]     num_inst
 );
-
    parameter RF_SELF_FORWARDING = 1;
+   parameter DATA_FORWARDING = 1;
 
    //-------------------------------------------------------------------------//
    // Wires
@@ -92,11 +92,16 @@ module datapath
                                        // fetched instruction will not be discarded
    wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
 
+   // Forward signals
+   wire [1:0]           rs_forward_src;
+   wire [1:0]           rt_forward_src;
+
    // register file
    wire [1:0]           addr1, addr2, addr3;
    wire [WORD_SIZE-1:0] data1, data2, writeData;
 
    // ALU
+   wire [WORD_SIZE-1:0] mem_forwarded, a_forwarded, b_forwarded;
    wire [WORD_SIZE-1:0] alu_temp_1, alu_temp_2; // operands before swap
    wire [WORD_SIZE-1:0] alu_operand_1, alu_operand_2; // operands after swap
    wire [WORD_SIZE-1:0] alu_result;
@@ -133,6 +138,7 @@ module datapath
    // control signal latches
    reg                  valid_mem, valid_wb; // valid_ex already declared
    reg                  branch_ex; // branch instruction in EX?
+   reg                  output_write_ex;
    reg [3:0]            alu_op_ex;
    reg                  alu_src_a_ex;
    reg [1:0]            alu_src_b_ex;
@@ -179,7 +185,8 @@ module datapath
                        .inst_type(inst_type));
 
    // Hazard detection unit
-   hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING))
+   hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING),
+                 .DATA_FORWARDING(DATA_FORWARDING))
    HU (.opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
@@ -205,6 +212,17 @@ module datapath
        .ir_write(ir_write),
        .incr_num_inst(incr_num_inst));
 
+   // Forwarding unit
+   forwarding_unit #(.DATA_FORWARDING(DATA_FORWARDING))
+   FU (.rs_ex(rs_ex),
+       .rt_ex(rt_ex),
+       .reg_write_mem(reg_write_mem),
+       .reg_write_wb(reg_write_wb),
+       .write_reg_mem(write_reg_mem),
+       .write_reg_wb(write_reg_wb),
+       .rs_forward_src(rs_forward_src),
+       .rt_forward_src(rt_forward_src));
+
    //-------------------------------------------------------------------------//
    // Per-stage wire connections
    //-------------------------------------------------------------------------//
@@ -226,12 +244,28 @@ module datapath
    assign addr2 = rt;
    
    // EX stage
+   // Data forwarding (see forwarding_unit.v)
+
+   // Since either ALUOut or immediate value can be forwarded from the MEM stage
+   // (LHI), we need to check which will be eventually written back using
+   // reg_write_src_mem.
+   assign mem_forwarded = (reg_write_src_mem == `REGWRITESRC_IMM) ? imm_signed_mem
+                          : alu_out_mem;
+
+   assign a_forwarded = (rs_forward_src == `FORWARD_SRC_MEM) ? mem_forwarded :
+                        (rs_forward_src == `FORWARD_SRC_WB)  ? writeData :
+                        /*(rs_forward_src == `FORWARD_SRC_RF) ?*/ a_ex;
+   assign b_forwarded = (rt_forward_src == `FORWARD_SRC_MEM) ? mem_forwarded :
+                        (rt_forward_src == `FORWARD_SRC_WB)  ? writeData :
+                        /*(rt_forward_src == `FORWARD_SRC_RF) ?*/ b_ex;
+
    assign alu_temp_1 = (alu_src_a_ex == `ALUSRCA_PC) ? pc :
-                     /*(alu_src_a_ex == `ALUSRCA_REG) ?*/ a_ex;
+                     /*(alu_src_a_ex == `ALUSRCA_REG) ?*/ a_forwarded;
    assign alu_temp_2 = (alu_src_b_ex == `ALUSRCB_ONE) ? 1 :
-                       (alu_src_b_ex == `ALUSRCB_REG) ? b_ex :
+                       (alu_src_b_ex == `ALUSRCB_REG) ? b_forwarded :
                        (alu_src_b_ex == `ALUSRCB_IMM) ? imm_signed_ex :
                        /*(alu_src_b_ex == `ALUSRCB_ZERO) ?*/ 0;
+
    assign alu_operand_1 = alu_src_swap_ex ? alu_temp_2 : alu_temp_1;
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
    // alu_result == 0 means branch check fail
@@ -269,6 +303,7 @@ module datapath
          b_ex <= 0;
          b_mem <= 0;
          alu_out_mem <= 0;
+         output_write_ex <= 0;
          // maybe set output_port to initially float
          output_port <= {WORD_SIZE{1'bz}};
          num_inst_if <= 0;
@@ -301,14 +336,9 @@ module datapath
                     `FUNC_JPR, `FUNC_JRL: begin
                        pc <= data1;
                     end
-                    default: begin
-                       // unknown jump type
-                    end
                   endcase
                end
-               else begin
-                  // unknown jump type
-               end
+               // don't care about unknown jump types
             end
             else begin
                pc <= npc;
@@ -338,6 +368,7 @@ module datapath
                          (reg_dst == `REGDST_RD) ? rd :
                          /*(reg_dst == `REGDST_2) ?*/ 2'd2;
          imm_signed_ex <= {{8{imm[7]}}, imm};
+         output_write_ex <= output_write;
          halt_ex <= halt_id;
 
          // EX stage
@@ -398,8 +429,8 @@ module datapath
          reg_write_src_wb <= reg_write_src_mem;
 
          // output port assertion
-         if (output_write == 1) begin
-            output_port <= data1;
+         if (output_write_ex == 1) begin
+            output_port <= a_forwarded;
          end
 
          // num_inst update

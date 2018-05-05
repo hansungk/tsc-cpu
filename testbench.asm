@@ -12,13 +12,13 @@ ENTRY:		LHI	$0, 0
 		LHI	$3, 0
 		WWD	$3	; TEST #1-4 : LHI (= 0x0000)
 
-		ADI	$0, $1, 1
-		WWD	$0	; TEST #2-1 : ADI (= 0x0001) ; #a
-		ADI	$0, $0, 1
+		ADI	$0, $1, 1 ; #2b
+		WWD	$0	; TEST #2-1 : ADI (= 0x0001)
+		ADI	$0, $0, 1 ; #2d
 		WWD	$0	; TEST #2-2 : ADI (= 0x0002)
 
 		ORI	$1, $2, 1
-		WWD	$1	; TEST #3-1 : ORI (= 0x0001) ; #e
+		WWD	$1	; TEST #3-1 : ORI (= 0x0001)
 		ORI	$1, $1, 2
 		WWD	$1	; TEST #3-2 : ORI (= 0x0003)
 		ORI	$1, $1, 3

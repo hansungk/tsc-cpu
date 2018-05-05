@@ -28,10 +28,13 @@ module cpu(
    //===-------------------------------------------------------------------===//
 
    // Configures whether RF self-forwards its WB result to be read in the same
-   // cycle, by doing synchronous write in negative clock edge, achieving
-   // 1/2-cycle earlier write.  This is done by flipping !clk to RF, and
-   // bypassing WB dependence check in the hazard detection unit.
+   // cycle, by doing synchronous write in negative clock edge.  This is done by
+   // flipping !clk to RF, and bypassing WB dependence check in the hazard
+   // detection unit.
    parameter RF_SELF_FORWARDING = 1;
+
+   // Configures whether data forwarding is enabled.
+   parameter DATA_FORWARDING = 1;
 
    // Datapath - control Unit
    wire        clk;
@@ -76,7 +79,8 @@ module cpu(
 			 .halt_id (halt_id)); 
 
    datapath #(.WORD_SIZE (`WORD_SIZE),
-              .RF_SELF_FORWARDING(RF_SELF_FORWARDING)) 
+              .RF_SELF_FORWARDING(RF_SELF_FORWARDING),
+              .DATA_FORWARDING(DATA_FORWARDING))
    DP (
        .clk(clk),
        .reset_n (reset_n),
