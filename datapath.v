@@ -72,6 +72,7 @@ module datapath
 );
    parameter RF_SELF_FORWARDING = 1;
    parameter DATA_FORWARDING = 1;
+   parameter PREDICT_ALWAYS_UNTAKEN = 1;
 
    //-------------------------------------------------------------------------//
    // Wires
@@ -87,7 +88,13 @@ module datapath
    wire                 ir_write;
    wire                 bubblify; // reset all control signals to zero
    wire                 flush_if; // reset IR to nop
+   wire                 branch_taken;
+
+   // Branch prediction miss flag.  If branch prediction is disabled, this is
+   // always to 1; doing this simplifies sharing stall/flush logic between
+   // prediction and no-prediction.
    wire                 branch_miss;
+
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
    wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
@@ -133,6 +140,7 @@ module datapath
    // debug purpose: which inst # is being passed through this stage?
    // num_inst_if effectively means "number of instructions fetched"
    reg [WORD_SIZE-1:0]  num_inst_if, num_inst_id, num_inst_ex;
+   reg [WORD_SIZE-1:0]  num_inst_if_saved;
    assign num_inst = num_inst_ex; // num_inst is the inst passing through EX right now
 
    // control signal latches
@@ -186,7 +194,8 @@ module datapath
 
    // Hazard detection unit
    hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING),
-                 .DATA_FORWARDING(DATA_FORWARDING))
+                 .DATA_FORWARDING(DATA_FORWARDING),
+                 .PREDICT_ALWAYS_UNTAKEN(PREDICT_ALWAYS_UNTAKEN))
    HU (.opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
@@ -268,8 +277,10 @@ module datapath
 
    assign alu_operand_1 = alu_src_swap_ex ? alu_temp_2 : alu_temp_1;
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
-   // alu_result == 0 means branch check fail
-   assign resolved_pc = (alu_result == 0) ? npc_ex : npc_ex + imm_signed_ex;
+   assign branch_taken = alu_result != 0; // alu_result == 0 means branch check fail
+   // Always miss if there is no prediction.
+   assign branch_miss = PREDICT_ALWAYS_UNTAKEN ? branch_taken : 1;
+   assign resolved_pc = branch_taken ? npc_ex + imm_signed_ex : npc_ex;
 
    // MEM stage
    assign d_readM = d_mem_read_mem;
@@ -324,10 +335,13 @@ module datapath
             // Since branch is resolved in EX and jump in ID, PC resolution from
             // branch is always older than from jump and thus should be handled
             // first. Respect this order.
-            if (branch_ex) begin
+            if (branch_ex && branch_miss) begin
                pc <= resolved_pc;
+               // Restore num_inst_if back to what it was.
+               num_inst_if <= num_inst_if_saved;
             end
-            else if (inst_type == `INSTTYPE_JUMP) begin // FIXME: 'jump' control signal?
+            else if (inst_type == `INSTTYPE_JUMP) begin
+            // if (!branch_ex && (inst_type == `INSTTYPE_JUMP)) begin
                if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
                   pc <= {pc[15:12], target_addr};
                end
@@ -369,7 +383,11 @@ module datapath
                          /*(reg_dst == `REGDST_2) ?*/ 2'd2;
          imm_signed_ex <= {{8{imm[7]}}, imm};
          output_write_ex <= output_write;
-         halt_ex <= halt_id;
+
+         // For branch, save num_inst_if so that it can be restored in case of
+         // pipeline flush due to branch prediction miss.
+         if (inst_type == `INSTTYPE_BRANCH)
+           num_inst_if_saved <= num_inst_if;
 
          // EX stage
          npc_mem <= npc_ex;
@@ -381,7 +399,6 @@ module datapath
          alu_out_mem <= alu_result;
          write_reg_mem <= write_reg_ex;
          imm_signed_mem <= imm_signed_ex;
-         halt_mem <= halt_ex;
 
          // MEM stage
          npc_wb <= npc_mem;
@@ -393,7 +410,6 @@ module datapath
          MDR_wb <= d_data;
          write_reg_wb <= write_reg_mem;
          imm_signed_wb <= imm_signed_mem;
-         halt_wb <= halt_mem;
 
          //------------------------//
          // Control signal latches
@@ -402,6 +418,7 @@ module datapath
          // ID stage (EX+MEM+WB)
          // if hazard detected, insert bubbles into pipeline
          valid_ex         <= bubblify ? 0 : 1;
+         halt_ex          <= bubblify ? 0 : halt_id;
          branch_ex        <= bubblify ? 0 : branch;
          alu_op_ex        <= bubblify ? 0 : alu_op;
          alu_src_a_ex     <= bubblify ? 0 : alu_src_a;
@@ -416,6 +433,7 @@ module datapath
 
          // EX stage (MEM+WB)
          valid_mem <= valid_ex;
+         halt_mem <= halt_ex;
          i_mem_read_mem <= i_mem_read_ex;
          d_mem_read_mem <= d_mem_read_ex;
          i_mem_write_mem <= i_mem_write_ex;
@@ -425,6 +443,7 @@ module datapath
 
          // MEM stage (WB)
          valid_wb <= valid_mem;
+         halt_wb <= halt_mem;
          reg_write_wb <= reg_write_mem;
          reg_write_src_wb <= reg_write_src_mem;
 

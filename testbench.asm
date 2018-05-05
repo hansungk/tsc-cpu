@@ -110,7 +110,7 @@ JMP1:		WWD	$1	; TEST #14-2 : JMP (= 0x0001)
 BNE1:		HLT
 BNE2:		WWD	$0	; TEST #15-1 : BNE (= 0xFFFF)
 
-		BNE	$1, $2, BNE3
+		BNE	$1, $2, BNE3 ;7e
 		HLT
 BNE3:		WWD	$1	; TEST #15-2 : BNE (= 0x0001)
 

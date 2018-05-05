@@ -36,6 +36,9 @@ module cpu(
    // Configures whether data forwarding is enabled.
    parameter DATA_FORWARDING = 1;
 
+   // Enables always untaken, flush-on-miss branch prediction.
+   parameter PREDICT_ALWAYS_UNTAKEN = 1;
+
    // Datapath - control Unit
    wire        clk;
    wire        reset_n;
@@ -80,7 +83,8 @@ module cpu(
 
    datapath #(.WORD_SIZE (`WORD_SIZE),
               .RF_SELF_FORWARDING(RF_SELF_FORWARDING),
-              .DATA_FORWARDING(DATA_FORWARDING))
+              .DATA_FORWARDING(DATA_FORWARDING),
+              .PREDICT_ALWAYS_UNTAKEN(PREDICT_ALWAYS_UNTAKEN))
    DP (
        .clk(clk),
        .reset_n (reset_n),

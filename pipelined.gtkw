@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
-[*] Sat May  5 17:02:33 2018
+[*] Sat May  5 20:17:58 2018
 [*]
 [dumpfile] "/home/stephen/pipelined/pipelined.vcd"
-[dumpfile_mtime] "Sat May  5 16:58:41 2018"
-[dumpfile_size] 1551855
+[dumpfile_mtime] "Sat May  5 20:17:51 2018"
+[dumpfile_size] 119413
 [savefile] "/home/stephen/pipelined/pipelined.gtkw"
-[timestart] 0
+[timestart] 8818200
 [size] 3840 2029
 [pos] -1 -1
-*-16.932030 213569800 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-16.932030 10100400 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
 [sst_width] 441
 [signals_width] 579
 [sst_expanded] 1
-[sst_vpaned_height] 613
+[sst_vpaned_height] 1182
 @22
 cpu_TB.Passed[15:0]
 @28
@@ -53,9 +53,7 @@ cpu_TB.UUT.DP.pc_write
 -ID
 @22
 cpu_TB.UUT.DP.pc_id[15:0]
-@23
 cpu_TB.UUT.DP.npc_id[15:0]
-@22
 cpu_TB.UUT.DP.num_inst_id[15:0]
 @c00022
 cpu_TB.UUT.DP.ir[15:0]
@@ -110,6 +108,8 @@ cpu_TB.UUT.DP.incr_num_inst
 cpu_TB.UUT.DP.npc_ex[15:0]
 @28
 cpu_TB.UUT.DP.branch_ex
+@29
+cpu_TB.UUT.DP.branch_taken
 @22
 cpu_TB.UUT.DP.alu_operand_1[15:0]
 cpu_TB.UUT.DP.alu_operand_2[15:0]
@@ -117,6 +117,8 @@ cpu_TB.UUT.DP.alu_result[15:0]
 cpu_TB.UUT.DP.b_ex[15:0]
 @28
 cpu_TB.UUT.DP.write_reg_ex[1:0]
+cpu_TB.UUT.DP.rs_forward_src[1:0]
+cpu_TB.UUT.DP.rt_forward_src[1:0]
 @200
 -MEM
 @22

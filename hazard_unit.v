@@ -30,6 +30,7 @@ module hazard_unit(
 );
    parameter RF_SELF_FORWARDING = 1;
    parameter DATA_FORWARDING = 1;
+   parameter PREDICT_ALWAYS_UNTAKEN = 1;
 
    reg         use_rs, use_rs_at_id, use_rt;
 
@@ -89,17 +90,17 @@ module hazard_unit(
          // Control hazard handling
          //-------------------------------------------------------------------//
 
-         if (inst_type == `INSTTYPE_JUMP ||
-             inst_type == `INSTTYPE_BRANCH) begin
-            // Stall-based control hazard resolution
-
-            // PC + 1 has been fetched, flush it
+         if (inst_type == `INSTTYPE_JUMP) begin
+            // PC + 1 has been fetched, flush it ("branch miss")
             flush_if = 1;
          end
-         if (branch_ex) begin
-            // If a conditional branch is in EX, flush IF and bubblify ID,
-            // effectively erasing two instructions.
-            // bubblify = 1;
+
+         // branch_miss is always 1 on no prediction, so this becomes
+         // unconditional stall-on-branch.
+         if (branch_ex && branch_miss) begin
+            // On branch miss, flush IF and bubblify ID, effectively erasing two
+            // instructions.
+            bubblify = 1;
             flush_if = 1;
          end
       end
