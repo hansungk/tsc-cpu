@@ -90,9 +90,8 @@ module datapath
    wire                 flush_if; // reset IR to nop
    wire                 branch_taken;
 
-   // Branch prediction miss flag.  If branch prediction is disabled, this is
-   // always to 1; doing this simplifies sharing stall/flush logic between
-   // prediction and no-prediction.
+   // Branch prediction miss flag.  If branch prediction is disabled,
+   // this is always set to 1.
    wire                 branch_miss;
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
@@ -192,7 +191,6 @@ module datapath
                        .func_code(func_code),
                        .inst_type(inst_type));
 
-   // Hazard detection unit
    hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING),
                  .DATA_FORWARDING(DATA_FORWARDING),
                  .PREDICT_ALWAYS_UNTAKEN(PREDICT_ALWAYS_UNTAKEN))
@@ -221,7 +219,6 @@ module datapath
        .ir_write(ir_write),
        .incr_num_inst(incr_num_inst));
 
-   // Forwarding unit
    forwarding_unit #(.DATA_FORWARDING(DATA_FORWARDING))
    FU (.rs_ex(rs_ex),
        .rt_ex(rt_ex),
@@ -300,7 +297,7 @@ module datapath
    //-------------------------------------------------------------------------//
 
    always @(posedge clk) begin
-      if (reset_n == 0) begin
+      if (!reset_n) begin
          // reset all pipeline registers and control signal registers
          // to zero to prevent any initial output
          pc <= 0;
@@ -315,19 +312,17 @@ module datapath
          b_mem <= 0;
          alu_out_mem <= 0;
          output_write_ex <= 0;
-         // maybe set output_port to initially float
-         output_port <= {WORD_SIZE{1'bz}};
+         output_port <= {WORD_SIZE{1'bz}}; // initially float
          num_inst_if <= 0;
          num_inst_id <= 0;
          num_inst_ex <= 0;
       end
       else begin
-         //------------------------//
-         // Pipeline stage latches
-         //------------------------//
+		 //-------------------------------------------------------------------//
+		 // PC resolution
+		 //-------------------------------------------------------------------//
 
          npc = pc + 1;
-
          if (pc_write) begin
             // Handle the case where conditional branch and jump is resolved at
             // the same time.
@@ -340,6 +335,7 @@ module datapath
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;
             end
+			// fall through on branch hit, jump or non-branch
             else if (inst_type == `INSTTYPE_JUMP) begin
             // if (!branch_ex && (inst_type == `INSTTYPE_JUMP)) begin
                if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
@@ -354,10 +350,15 @@ module datapath
                end
                // don't care about unknown jump types
             end
+			// fall through on branch hit or non-branch
             else begin
                pc <= npc;
             end
          end
+
+		 //-------------------------------------------------------------------//
+         // Pipeline stage latches
+		 //-------------------------------------------------------------------//
 
          // IF stage
          //
@@ -411,9 +412,9 @@ module datapath
          write_reg_wb <= write_reg_mem;
          imm_signed_wb <= imm_signed_mem;
 
-         //------------------------//
+		 //-------------------------------------------------------------------//
          // Control signal latches
-         //------------------------//
+		 //-------------------------------------------------------------------//
 
          // ID stage (EX+MEM+WB)
          // if hazard detected, insert bubbles into pipeline
@@ -447,8 +448,13 @@ module datapath
          reg_write_wb <= reg_write_mem;
          reg_write_src_wb <= reg_write_src_mem;
 
+		 //-------------------------------------------------------------------//
+         // Debug info
+		 //-------------------------------------------------------------------//
+
          // output port assertion
          if (output_write_ex == 1) begin
+			// WWD can also benefit from forwarding
             output_port <= a_forwarded;
          end
 

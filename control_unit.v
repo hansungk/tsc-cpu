@@ -73,8 +73,6 @@ module control_unit(
                           .ALUMode(ALUMode), .alu_op(alu_op));
 
    always @(*) begin
-      // FIXME Comment here
-
       // defaults to NOP
       branch = 0;
       i_or_d = 0;
