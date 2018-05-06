@@ -38,7 +38,7 @@ module cpu(
    parameter DATA_FORWARDING = 1;
 
    // Enables always untaken, flush-on-miss branch prediction.
-   parameter PREDICT_ALWAYS_UNTAKEN = 1;
+   parameter PREDICT_ALWAYS_UNTAKEN = 0;
 
    // Datapath - control Unit
    wire        clk;

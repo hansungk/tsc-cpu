@@ -73,6 +73,7 @@ module datapath
    parameter RF_SELF_FORWARDING = 1;
    parameter DATA_FORWARDING = 1;
    parameter PREDICT_ALWAYS_UNTAKEN = 1;
+   parameter PREDICT_ALWAYS_TAKEN = 1;
 
    //-------------------------------------------------------------------------//
    // Wires
@@ -94,10 +95,15 @@ module datapath
    // is disabled, this is always set to 1.
    wire                 branch_miss;
 
-   wire                 incr_num_inst; // increase num_inst when it becomes positive that the
-                                       // fetched instruction will not be discarded
    wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
    wire [WORD_SIZE-1:0] jump_pc; // target PC for JUMP
+
+   wire [WORD_SIZE-1:0] npc; // next PC; connected to either npc_pred
+							 // or pc + 1 depending on configuration
+   wire [WORD_SIZE-1:0] npc_pred; // predicted next PC (branch predictor output)
+
+   wire                 incr_num_inst; // increase num_inst when it becomes positive that the
+                                       // fetched instruction will not be discarded
 
    // Unconditional branch prediction miss flag.  If branch prediction
    // is disabled, this is always set to 1.
@@ -124,7 +130,7 @@ module datapath
 
    // unconditional latches
    reg [WORD_SIZE-1:0]  pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
-   reg [WORD_SIZE-1:0]  npc, npc_id, npc_ex, npc_mem, npc_wb; // PC + 4 saved for branch resolution and JAL writeback
+   reg [WORD_SIZE-1:0]  npc_id, npc_ex, npc_mem, npc_wb; // PC + 4 saved for branch resolution and JAL writeback
    reg [WORD_SIZE-1:0]  inst_type_ex, inst_type_mem, inst_type_wb;
    wire [WORD_SIZE-1:0] ir; // instruction register, bound to separate module
    reg [WORD_SIZE-1:0]  MDR_wb; // memory data register
@@ -234,11 +240,23 @@ module datapath
        .rs_forward_src(rs_forward_src),
        .rt_forward_src(rt_forward_src));
 
+   branch_predictor #(.BTB_IDX_SIZE(8))
+   BPRED (.clk(clk),
+		  .reset_n(reset_n),
+		  .update(),
+		  .pc(pc),
+		  .branch_target(),
+		  .found(),
+		  .npc(npc_pred));
+
    //-------------------------------------------------------------------------//
    // Per-stage wire connections
    //-------------------------------------------------------------------------//
 
    // IF stage
+   // Connect npc to either BTB or pc+1 depending on prediction policy
+   // (or lack thereof)
+   assign npc = PREDICT_ALWAYS_TAKEN ? npc_pred : pc + 1;
    assign i_address = pc;
    assign i_readM = i_mem_read;
    assign i_writeM = 0; // no instruction write
@@ -330,7 +348,6 @@ module datapath
 		 // PC resolution
 		 //-------------------------------------------------------------------//
 
-         npc = pc + 1;
          if (pc_write) begin
             // Handle the case where conditional branch and jump is resolved at
             // the same time.
