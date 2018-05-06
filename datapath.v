@@ -90,13 +90,18 @@ module datapath
    wire                 flush_if; // reset IR to nop
    wire                 branch_taken;
 
-   // Branch prediction miss flag.  If branch prediction is disabled,
-   // this is always set to 1.
+   // Conditional branch prediction miss flag.  If branch prediction
+   // is disabled, this is always set to 1.
    wire                 branch_miss;
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
    wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
+   wire [WORD_SIZE-1:0] jump_pc; // target PC for JUMP
+
+   // Unconditional branch prediction miss flag.  If branch prediction
+   // is disabled, this is always set to 1.
+   wire 				jump_miss;
 
    // Forward signals
    wire [1:0]           rs_forward_src;
@@ -197,7 +202,7 @@ module datapath
    HU (.opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
-       .branch_ex(branch_ex),
+	   .jump_miss(jump_miss),
        .branch_miss(branch_miss),
        .rs_id(rs),
        .rt_id(rt),
@@ -246,6 +251,9 @@ module datapath
    assign rd = ir[7:6];
    assign imm = ir[7:0];
    assign target_addr = ir[11:0];
+   assign jump_pc = {pc[15:12], target_addr};
+   assign jump_miss = (inst_type == `INSTTYPE_JUMP) &&
+					  (PREDICT_ALWAYS_UNTAKEN ? (jump_pc != npc_id) : 1);
    assign addr1 = rs;
    assign addr2 = rt;
    
@@ -336,10 +344,9 @@ module datapath
                num_inst_if <= num_inst_if_saved;
             end
 			// fall through on branch hit, jump or non-branch
-            else if (inst_type == `INSTTYPE_JUMP) begin
-            // if (!branch_ex && (inst_type == `INSTTYPE_JUMP)) begin
+            else if (jump_miss) begin
                if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
-                  pc <= {pc[15:12], target_addr};
+                  pc <= jump_pc;
                end
                else if (opcode == `OPCODE_RTYPE) begin
                   case (func_code)

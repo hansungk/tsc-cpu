@@ -5,20 +5,20 @@
 module hazard_unit(
    input [3:0] opcode,
    input [2:0] inst_type,
-   input [5:0] func_code, 
-   input       branch_ex, // used for stall-based resolution
-   input       branch_miss, // used for branch prediction 
+   input [5:0] func_code,
+   input 	   jump_miss, // misprediction for unconditional branch
+   input 	   branch_miss, // used for branch prediction 
    input [1:0] rs_id, 
    input [1:0] rt_id, 
-   input       reg_write_ex,
-   input       reg_write_mem,
-   input       reg_write_wb,
+   input 	   reg_write_ex,
+   input 	   reg_write_mem,
+   input 	   reg_write_wb,
    input [1:0] write_reg_ex, 
    input [1:0] write_reg_mem, 
    input [1:0] write_reg_wb, 
-   input       d_mem_read_ex,
-   input       d_mem_read_mem,
-   input       d_mem_read_wb,
+   input 	   d_mem_read_ex,
+   input 	   d_mem_read_mem,
+   input 	   d_mem_read_wb,
    input [1:0] rt_ex, 
    input [1:0] rt_mem, 
    input [1:0] rt_wb, 
@@ -90,7 +90,9 @@ module hazard_unit(
          // Control hazard handling
          //-------------------------------------------------------------------//
 
-         if (inst_type == `INSTTYPE_JUMP) begin
+         // jump_miss is always 1 on no prediction, so this becomes
+         // unconditional stall-on-branch.
+         if (jump_miss) begin
             // PC + 1 has been fetched, flush it ("branch miss")
             flush_if = 1;
          end
