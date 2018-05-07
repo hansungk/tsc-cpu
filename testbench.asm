@@ -168,7 +168,7 @@ BLZ5:		WWD	$1	; TEST #18-3 : BLZ (= 0x0001)
 
 		JMP	PREFIB1	; #a9
 PREFIB2:	ADI	$1, $2, 0
-		JRL	$1
+		JRL	$1				   ; #ab
 		WWD	$0	; TEST #20 : JAL & JRL & JPR (= 0x0022)
 
 		HLT		; FINISHED #ad

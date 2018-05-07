@@ -54,7 +54,6 @@ module datapath
     input                      halt_id,
 
     input                      input_ready,
-    output reg                 valid_ex,
     output [WORD_SIZE-1:0]     i_address,
     output [WORD_SIZE-1:0]     d_address,
     output                     i_readM,
@@ -82,7 +81,8 @@ module datapath
    // Decoded info
    wire [1:0]           rs, rt, rd;
    wire [7:0]           imm;
-   wire [11:0]          target_addr;
+   wire [11:0]          target_imm;
+   wire [WORD_SIZE-1:0] imm_signed;
 
    // Hazard signals
    wire                 pc_write, pc_write_cond;
@@ -96,11 +96,15 @@ module datapath
    wire                 branch_miss;
 
    wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
-   wire [WORD_SIZE-1:0] jump_pc; // target PC for JUMP
+   wire [WORD_SIZE-1:0] jump_target; // target PC for unconditional branches (Jump)
+   wire [WORD_SIZE-1:0] cond_branch_target; // target PC for conditional branches
+   wire [WORD_SIZE-1:0] branch_target; // target PC for branches
 
    wire [WORD_SIZE-1:0] npc; // next PC; connected to either npc_pred
 							 // or pc + 1 depending on configuration
    wire [WORD_SIZE-1:0] npc_pred; // predicted next PC (branch predictor output)
+   wire 				tag_match; // BTB tag matched PC (branch predictor output)
+   wire 				update_tag; // update BTB tag (branch predictor input)
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
@@ -131,6 +135,9 @@ module datapath
    // unconditional latches
    reg [WORD_SIZE-1:0]  pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
    reg [WORD_SIZE-1:0]  npc_id, npc_ex, npc_mem, npc_wb; // PC + 4 saved for branch resolution and JAL writeback
+   reg [WORD_SIZE-1:0] 	cond_branch_target_ex; // carry branch target for misprediction check
+   reg 					tag_match_id; // BTB search failed in IF;
+										  // should update in ID stage
    reg [WORD_SIZE-1:0]  inst_type_ex, inst_type_mem, inst_type_wb;
    wire [WORD_SIZE-1:0] ir; // instruction register, bound to separate module
    reg [WORD_SIZE-1:0]  MDR_wb; // memory data register
@@ -154,7 +161,6 @@ module datapath
    assign num_inst = num_inst_ex; // num_inst is the inst passing through EX right now
 
    // control signal latches
-   reg                  valid_mem, valid_wb; // valid_ex already declared
    reg                  branch_ex; // branch instruction in EX?
    reg                  output_write_ex;
    reg [3:0]            alu_op_ex;
@@ -243,10 +249,11 @@ module datapath
    branch_predictor #(.BTB_IDX_SIZE(8))
    BPRED (.clk(clk),
 		  .reset_n(reset_n),
-		  .update(),
+		  .update_tag(update_tag),
 		  .pc(pc),
-		  .branch_target(),
-		  .found(),
+		  .pc_collided(pc_id),
+		  .branch_target(branch_target),
+		  .tag_match(tag_match),
 		  .npc(npc_pred));
 
    //-------------------------------------------------------------------------//
@@ -267,13 +274,29 @@ module datapath
    assign rs = ir[11:10];
    assign rt = ir[9:8];
    assign rd = ir[7:6];
-   assign imm = ir[7:0];
-   assign target_addr = ir[11:0];
-   assign jump_pc = {pc[15:12], target_addr};
-   assign jump_miss = (inst_type == `INSTTYPE_JUMP) &&
-					  (PREDICT_ALWAYS_UNTAKEN ? (jump_pc != npc_id) : 1);
    assign addr1 = rs;
    assign addr2 = rt;
+   assign imm = ir[7:0];
+   assign imm_signed = {{8{imm[7]}}, imm};
+   assign target_imm = ir[11:0];
+
+   // Branch targets
+   assign jump_target = (opcode == `OPCODE_RTYPE && (func_code == `FUNC_JPR || func_code == `FUNC_JRL)) ?
+						data1 :
+						{pc[15:12], target_imm};
+   assign cond_branch_target = (pc_id + 1) + imm_signed; // FIXME
+   assign branch_target = (inst_type == `INSTTYPE_JUMP) ?
+						  jump_target :
+						  cond_branch_target;
+   assign jump_miss = (inst_type == `INSTTYPE_JUMP) &&
+					  (PREDICT_ALWAYS_UNTAKEN ? (jump_target != npc_id) :
+					   PREDICT_ALWAYS_TAKEN ? (jump_target != npc_id) :
+					   1);
+
+   // If this is a branch instruction and BTB tag match failed in IF,
+   // update tag in ID stage.
+   assign update_tag = (inst_type == `INSTTYPE_JUMP || inst_type == `INSTTYPE_BRANCH) &&
+					   !tag_match_id;
    
    // EX stage
    // Data forwarding (see forwarding_unit.v)
@@ -301,9 +324,11 @@ module datapath
    assign alu_operand_1 = alu_src_swap_ex ? alu_temp_2 : alu_temp_1;
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
    assign branch_taken = alu_result != 0; // alu_result == 0 means branch check fail
+   assign resolved_pc = branch_taken ? cond_branch_target_ex : (pc_ex + 1); // FIXME
    // Always miss if there is no prediction.
-   assign branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? branch_taken : 1);
-   assign resolved_pc = branch_taken ? npc_ex + imm_signed_ex : npc_ex;
+   assign branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? branch_taken :
+									  PREDICT_ALWAYS_TAKEN ? (resolved_pc != npc_ex) :
+									  1);
 
    // MEM stage
    assign d_readM = d_mem_read_mem;
@@ -316,7 +341,7 @@ module datapath
    assign writeData = (reg_write_src_wb == `REGWRITESRC_IMM) ? imm_signed_wb : // LHI
                       (reg_write_src_wb == `REGWRITESRC_ALU) ? alu_out_wb :
                       (reg_write_src_wb == `REGWRITESRC_MEM) ? MDR_wb :
-                      /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ npc_wb;
+                      /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ (pc_wb + 1);
 
    //-------------------------------------------------------------------------//
    // Register transfers
@@ -331,7 +356,8 @@ module datapath
          npc_ex <= 0;
          npc_mem <= 0;
          npc_wb <= 0;
-         valid_ex <= 0;
+		 cond_branch_target_ex <= 0;
+		 tag_match_id <= 0;
          MDR_wb <= 0;
          a_ex <= 0;
          b_ex <= 0;
@@ -363,7 +389,7 @@ module datapath
 			// fall through on branch hit, jump or non-branch
             else if (jump_miss) begin
                if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
-                  pc <= jump_pc;
+                  pc <= jump_target;
                end
                else if (opcode == `OPCODE_RTYPE) begin
                   case (func_code)
@@ -392,10 +418,13 @@ module datapath
             npc_id <= npc; // adder for PC
             pc_id <= pc; // for debugging purpose
          end
+		 // save BTB tag match result
+		 tag_match_id <= tag_match;
 
          // ID stage
          npc_ex <= npc_id;
          pc_ex <= pc_id;
+		 cond_branch_target_ex <= cond_branch_target;
          num_inst_ex <= num_inst_id;
          inst_type_ex <= inst_type;
          rs_ex <= rs;
@@ -406,7 +435,7 @@ module datapath
          write_reg_ex <= (reg_dst == `REGDST_RT) ? rt :
                          (reg_dst == `REGDST_RD) ? rd :
                          /*(reg_dst == `REGDST_2) ?*/ 2'd2;
-         imm_signed_ex <= {{8{imm[7]}}, imm};
+         imm_signed_ex <= imm_signed;
          output_write_ex <= output_write;
 
          // For branch, save num_inst_if so that it can be restored in case of
@@ -442,7 +471,6 @@ module datapath
 
          // ID stage (EX+MEM+WB)
          // if hazard detected, insert bubbles into pipeline
-         valid_ex         <= bubblify ? 0 : 1;
          halt_ex          <= bubblify ? 0 : halt_id;
          branch_ex        <= bubblify ? 0 : branch;
          alu_op_ex        <= bubblify ? 0 : alu_op;
@@ -457,7 +485,6 @@ module datapath
          reg_write_src_ex <= bubblify ? 0 : reg_write_src;
 
          // EX stage (MEM+WB)
-         valid_mem <= valid_ex;
          halt_mem <= halt_ex;
          i_mem_read_mem <= i_mem_read_ex;
          d_mem_read_mem <= d_mem_read_ex;
@@ -467,7 +494,6 @@ module datapath
          reg_write_src_mem <= reg_write_src_ex;
 
          // MEM stage (WB)
-         valid_wb <= valid_mem;
          halt_wb <= halt_mem;
          reg_write_wb <= reg_write_mem;
          reg_write_src_wb <= reg_write_src_mem;

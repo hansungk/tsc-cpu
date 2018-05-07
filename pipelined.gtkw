@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
-[*] Sun May  6 09:47:41 2018
+[*] Mon May  7 14:26:13 2018
 [*]
 [dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
-[dumpfile_mtime] "Sun May  6 09:42:57 2018"
-[dumpfile_size] 111772
+[dumpfile_mtime] "Mon May  7 14:17:55 2018"
+[dumpfile_size] 465939
 [savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.gtkw"
-[timestart] 8399000
+[timestart] 15180000
 [size] 1440 855
 [pos] -1 -1
-*-18.166470 9090000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.166470 17527000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
 [sst_width] 195
 [signals_width] 279
 [sst_expanded] 1
-[sst_vpaned_height] 342
+[sst_vpaned_height] 526
 @22
 cpu_TB.Passed[15:0]
 @28
@@ -89,12 +89,10 @@ cpu_TB.UUT.DP.inst_type[2:0]
 cpu_TB.UUT.DP.data1[15:0]
 cpu_TB.UUT.DP.data2[15:0]
 @28
-cpu_TB.UUT.DP.reg_write
-cpu_TB.UUT.DP.reg_write_src[1:0]
-@23
-cpu_TB.UUT.DP.jump_pc[15:0]
-@28
 cpu_TB.UUT.DP.jump_miss
+@22
+cpu_TB.UUT.DP.jump_target[15:0]
+@28
 cpu_TB.UUT.DP.branch
 @200
 -ID hazard
@@ -105,15 +103,27 @@ cpu_TB.UUT.DP.resolved_pc[15:0]
 @28
 cpu_TB.UUT.DP.HU.bubblify
 cpu_TB.UUT.DP.HU.flush_if
-cpu_TB.UUT.DP.incr_num_inst
+@200
+-Branch predictor
+@22
+cpu_TB.UUT.DP.BPRED.btb_idx[7:0]
+cpu_TB.UUT.DP.BPRED.pc_tag[7:0]
+@28
+cpu_TB.UUT.DP.BPRED.tag_match
+cpu_TB.UUT.DP.BPRED.update_tag
+@22
+cpu_TB.UUT.DP.BPRED.branch_target[15:0]
+cpu_TB.UUT.DP.BPRED.npc[15:0]
 @200
 -EX
 @22
 cpu_TB.UUT.DP.npc_ex[15:0]
+cpu_TB.UUT.DP.resolved_pc[15:0]
 @28
-cpu_TB.UUT.DP.branch_ex
 cpu_TB.UUT.DP.branch_taken
+cpu_TB.UUT.DP.branch_miss
 @22
+cpu_TB.UUT.DP.resolved_pc[15:0]
 cpu_TB.UUT.DP.alu_operand_1[15:0]
 cpu_TB.UUT.DP.alu_operand_2[15:0]
 cpu_TB.UUT.DP.alu_result[15:0]
