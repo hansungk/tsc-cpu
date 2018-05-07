@@ -89,11 +89,11 @@ module datapath
    wire                 ir_write;
    wire                 bubblify; // reset all control signals to zero
    wire                 flush_if; // reset IR to nop
-   wire                 branch_taken;
+   wire                 cond_branch_taken;
 
    // Conditional branch prediction miss flag.  If branch prediction
    // is disabled, this is always set to 1.
-   wire                 branch_miss;
+   wire                 cond_branch_miss;
 
    wire [WORD_SIZE-1:0] resolved_pc; // PC resolved as either branch target or PC+1
    wire [WORD_SIZE-1:0] jump_target; // target PC for unconditional branches (Jump)
@@ -105,6 +105,9 @@ module datapath
    wire [WORD_SIZE-1:0] npc_pred; // predicted next PC (branch predictor output)
    wire 				tag_match; // BTB tag matched PC (branch predictor output)
    wire 				update_tag; // update BTB tag (branch predictor input)
+   reg 					update_bht; // update BHT (branch predictor input)
+   reg [WORD_SIZE-1:0] 	pc_outcome; // PC when branch outcome is decided (branch predictor input)
+   reg 					branch_outcome; // branch outcome (branch predictor input)
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
@@ -215,7 +218,7 @@ module datapath
        .inst_type(inst_type),
        .func_code(func_code),
 	   .jump_miss(jump_miss),
-       .branch_miss(branch_miss),
+       .branch_miss(cond_branch_miss),
        .rs_id(rs),
        .rt_id(rt),
        .reg_write_ex(reg_write_ex),
@@ -250,9 +253,12 @@ module datapath
    BPRED (.clk(clk),
 		  .reset_n(reset_n),
 		  .update_tag(update_tag),
+		  .update_bht(update_bht),
 		  .pc(pc),
 		  .pc_collided(pc_id),
+		  .pc_outcome(pc_outcome),
 		  .branch_target(branch_target),
+		  .branch_outcome(branch_outcome),
 		  .tag_match(tag_match),
 		  .npc(npc_pred));
 
@@ -323,12 +329,43 @@ module datapath
 
    assign alu_operand_1 = alu_src_swap_ex ? alu_temp_2 : alu_temp_1;
    assign alu_operand_2 = alu_src_swap_ex ? alu_temp_1 : alu_temp_2;
-   assign branch_taken = alu_result != 0; // alu_result == 0 means branch check fail
-   assign resolved_pc = branch_taken ? cond_branch_target_ex : (pc_ex + 1); // FIXME
+   assign cond_branch_taken = alu_result != 0; // alu_result == 0 means branch check fail
+   assign resolved_pc = cond_branch_taken ? cond_branch_target_ex : (pc_ex + 1); // FIXME
    // Always miss if there is no prediction.
-   assign branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? branch_taken :
+   assign cond_branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? cond_branch_taken :
 									  PREDICT_ALWAYS_TAKEN ? (resolved_pc != npc_ex) :
 									  1);
+
+   // Branch predictor update logic
+   always @(*) begin
+	  // Update BHT according to the branch outcome.  Done regardless
+	  // of hit/miss.
+	  //
+	  // If both conditional branch in EX and unconditional branch in
+	  // ID was mispredicted (possible with indirect jumps such as
+	  // JPR), prioritize conditional branch because the ID stage
+	  // contains speculative, to-be-flushed instruction
+	  if (branch_ex) begin // at EX stage
+		 update_bht = 1;
+		 pc_outcome = pc_ex;
+		 branch_outcome = cond_branch_taken;
+	  end
+	  else if (inst_type == `INSTTYPE_JUMP) begin // at ID stage
+		 update_bht = 1;
+		 pc_outcome = pc_id;
+		 // All jump_miss happens on indirect jumps (e.g. JPR).
+		 //
+		 // We can't do better than just predicting always-taken on
+		 // indirect jumps, unless we examine return address stack.
+		 // Just assume always-taken.
+		 branch_outcome = 1; // !jump_miss;
+	  end
+	  else begin
+		 update_bht = 0;
+		 pc_outcome = pc_ex; // doesn't matter
+		 branch_outcome = 1;
+	  end
+   end
 
    // MEM stage
    assign d_readM = d_mem_read_mem;
@@ -341,7 +378,7 @@ module datapath
    assign writeData = (reg_write_src_wb == `REGWRITESRC_IMM) ? imm_signed_wb : // LHI
                       (reg_write_src_wb == `REGWRITESRC_ALU) ? alu_out_wb :
                       (reg_write_src_wb == `REGWRITESRC_MEM) ? MDR_wb :
-                      /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ (pc_wb + 1);
+                      /*(reg_write_src_wb == `REGWRITESRC_PC) ?*/ (pc_wb + 1); // JAL, JRL
 
    //-------------------------------------------------------------------------//
    // Register transfers
@@ -381,7 +418,7 @@ module datapath
             // Since branch is resolved in EX and jump in ID, PC resolution from
             // branch is always older than from jump and thus should be handled
             // first. Respect this order.
-            if (branch_miss) begin
+            if (cond_branch_miss) begin
                pc <= resolved_pc;
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;

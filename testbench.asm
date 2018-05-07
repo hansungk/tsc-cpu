@@ -198,6 +198,6 @@ FIBRECUR:	SWD	$2, $3, 0 ; #b8
 		LWD	$2, $3, -2
 		ADD	$0, $0, $1
 		ADI	$3, $3, -2
-		JPR	$2
+		JPR	$2 ; #c5
 		HLT
 	.END
