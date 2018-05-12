@@ -6,7 +6,7 @@
 
 // Module that controls ALU operation using opcode and func code
 // decoded from the instruction.
-module alu_contro
+module alu_control
   (input [3:0]      opcode,
    input [5:0]      func_code,
    input            ALUMode, // 0: address calculation (add),

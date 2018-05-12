@@ -18,6 +18,7 @@ module branch_predictor
     output                     tag_match, // tag matched PC
     output reg [WORD_SIZE-1:0] npc // predictd next PC; asynchronous read
 );
+   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
    parameter BTB_IDX_SIZE = 8;
 
    // Tag table
@@ -59,28 +60,56 @@ module branch_predictor
             // set to all 1 to make sure tag always misses on first
             // access on each entry
             tags[i] <= {WORD_SIZE-BTB_IDX_SIZE{1'b1}};
-            bht[i] <= 2'b10; // initialize to 'weakly taken'
+            if (BRANCH_PREDICTOR == `BPRED_ALWAYS_TAKEN)
+              bht[i] <= 2'b10; // initialize to 'weakly taken' and never update
+            else
+              bht[i] <= 2'b10; // initialize to 'weakly taken'
             btb[i] <= 0;
          end
       end
       else begin
          // On collision, at ID stage
+         //
+         // This should be done for all predictors including always taken.
          if (update_tag) begin
             tags[btb_idx_collided] <= pc_tag_collided;
             btb[btb_idx_collided] <= branch_target;
          end
 
          // On branch outcome, at EX/ID stage
+         //
          if (update_bht) begin
-            // Saturation counter
-            if (branch_outcome) begin
-               if (bht[btb_idx_outcome] != 2'b11)
-                 bht[btb_idx_outcome] <= bht[btb_idx_outcome] + 1;
-            end
-            else begin
-               if (bht[btb_idx_outcome] != 2'b00)
-                 bht[btb_idx_outcome] <= bht[btb_idx_outcome] - 1;
-            end
+            case (BRANCH_PREDICTOR)
+              `BPRED_SATURATION_COUNTER: begin
+                 if (branch_outcome) begin
+                    if (bht[btb_idx_outcome] != 2'b11)
+                      bht[btb_idx_outcome] <= bht[btb_idx_outcome] + 1;
+                 end
+                 else begin
+                    if (bht[btb_idx_outcome] != 2'b00)
+                      bht[btb_idx_outcome] <= bht[btb_idx_outcome] - 1;
+                 end
+              end
+              `BPRED_HYSTERESIS_COUNTER: begin
+                 if (branch_outcome) begin
+                    case (bht[btb_idx_outcome])
+                      2'b00: bht[btb_idx_outcome] <= 2'b01;
+                      2'b01: bht[btb_idx_outcome] <= 2'b11;
+                      2'b10: bht[btb_idx_outcome] <= 2'b11;
+                      2'b11: bht[btb_idx_outcome] <= 2'b11;
+                    endcase
+                 end
+                 else begin
+                    case (bht[btb_idx_outcome])
+                      2'b00: bht[btb_idx_outcome] <= 2'b00;
+                      2'b01: bht[btb_idx_outcome] <= 2'b00;
+                      2'b10: bht[btb_idx_outcome] <= 2'b00;
+                      2'b11: bht[btb_idx_outcome] <= 2'b10;
+                    endcase
+                 end
+              end
+              // Never update BHT for always taken prediction
+            endcase
          end
       end
    end

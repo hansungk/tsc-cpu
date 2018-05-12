@@ -71,8 +71,7 @@ module datapath
 );
    parameter RF_SELF_FORWARDING = 1;
    parameter DATA_FORWARDING = 1;
-   parameter PREDICT_ALWAYS_UNTAKEN = 1;
-   parameter PREDICT_ALWAYS_TAKEN = 1;
+   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
 
    //-------------------------------------------------------------------------//
    // Wires
@@ -107,7 +106,7 @@ module datapath
    wire                 update_tag; // update BTB tag (branch predictor input)
    reg                  update_bht; // update BHT (branch predictor input)
    reg [WORD_SIZE-1:0]  pc_outcome; // PC when branch outcome is decided (branch predictor input)
-   reg                 branch_outcome; // branch outcome (branch predictor input)
+   reg                  branch_outcome; // branch outcome (branch predictor input)
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
@@ -212,8 +211,7 @@ module datapath
                        .inst_type(inst_type));
 
    hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING),
-                 .DATA_FORWARDING(DATA_FORWARDING),
-                 .PREDICT_ALWAYS_UNTAKEN(PREDICT_ALWAYS_UNTAKEN))
+                 .DATA_FORWARDING(DATA_FORWARDING))
    HU (.opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
@@ -249,7 +247,8 @@ module datapath
        .rs_forward_src(rs_forward_src),
        .rt_forward_src(rt_forward_src));
 
-   branch_predictor #(.BTB_IDX_SIZE(8))
+   branch_predictor #(.BTB_IDX_SIZE(8),
+                      .BRANCH_PREDICTOR(BRANCH_PREDICTOR))
    BPRED (.clk(clk),
           .reset_n(reset_n),
           .update_tag(update_tag),
@@ -269,7 +268,8 @@ module datapath
    // IF stage
    // Connect npc to either BTB or pc+1 depending on prediction policy
    // (or lack thereof)
-   assign npc = PREDICT_ALWAYS_TAKEN ? npc_pred : pc + 1;
+   assign npc = (BRANCH_PREDICTOR == `BPRED_NONE || BRANCH_PREDICTOR == `BPRED_ALWAYS_UNTAKEN) ?
+                pc + 1 : npc_pred;
    assign i_address = pc;
    assign i_readM = i_mem_read;
    assign i_writeM = 0; // no instruction write
@@ -295,9 +295,7 @@ module datapath
                           jump_target :
                           cond_branch_target;
    assign jump_miss = (inst_type == `INSTTYPE_JUMP) &&
-                      (PREDICT_ALWAYS_UNTAKEN ? (jump_target != npc_id) :
-                       PREDICT_ALWAYS_TAKEN ? (jump_target != npc_id) :
-                       1);
+                      ((BRANCH_PREDICTOR != `BPRED_NONE) ? (jump_target != npc_id) : 1); // always miss on no prediction
 
    // If this is a branch instruction and BTB tag match failed in IF,
    // update tag in ID stage.
@@ -332,39 +330,38 @@ module datapath
    assign cond_branch_taken = alu_result != 0; // alu_result == 0 means branch check fail
    assign resolved_pc = cond_branch_taken ? cond_branch_target_ex : (pc_ex + 1); // FIXME
    // Always miss if there is no prediction.
-   assign cond_branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? cond_branch_taken :
-                                                                          PREDICT_ALWAYS_TAKEN ? (resolved_pc != npc_ex) :
-                                                                          1);
+   assign cond_branch_miss = branch_ex &&
+                             ((BRANCH_PREDICTOR != `BPRED_NONE) ? (resolved_pc != npc_ex) : 1);
 
-   // Branch predictor update logic
+   // BHT update logic
    always @(*) begin
-          // Update BHT according to the branch outcome.  Done regardless
-          // of hit/miss.
-          //
-          // If both conditional branch in EX and unconditional branch in
-          // ID was mispredicted (possible with indirect jumps such as
-          // JPR), prioritize conditional branch because the ID stage
-          // contains speculative, to-be-flushed instruction
-          if (branch_ex) begin // at EX stage
-                 update_bht = 1;
-                 pc_outcome = pc_ex;
-                 branch_outcome = cond_branch_taken;
-          end
-          else if (inst_type == `INSTTYPE_JUMP) begin // at ID stage
-                 update_bht = 1;
-                 pc_outcome = pc_id;
-                 // All jump_miss happens on indirect jumps (e.g. JPR).
-                 //
-                 // We can't do better than just predicting always-taken on
-                 // indirect jumps, unless we examine return address stack.
-                 // Just assume always-taken.
-                 branch_outcome = 1; // !jump_miss;
-          end
-          else begin
-                 update_bht = 0;
-                 pc_outcome = pc_ex; // doesn't matter
-                 branch_outcome = 1;
-          end
+      // Update BHT according to the branch outcome.  Done regardless
+      // of hit/miss.
+      //
+      // If both conditional branch in EX and unconditional branch in
+      // ID was mispredicted (possible with indirect jumps such as
+      // JPR), prioritize conditional branch because the ID stage
+      // contains speculative, to-be-flushed instruction
+      if (branch_ex) begin // at EX stage
+         update_bht = 1;
+         pc_outcome = pc_ex;
+         branch_outcome = cond_branch_taken;
+      end
+      else if (inst_type == `INSTTYPE_JUMP) begin // at ID stage
+         update_bht = 1;
+         pc_outcome = pc_id;
+         // All jump_miss happens on indirect jumps (e.g. JPR).
+         //
+         // We can't do better than just predicting always-taken on
+         // indirect jumps, unless we examine return address stack.
+         // Just assume always-taken.
+         branch_outcome = 1; // !jump_miss;
+      end
+      else begin
+         update_bht = 0;
+         pc_outcome = pc_ex; // doesn't matter
+         branch_outcome = 1;
+      end
    end
 
    // MEM stage
@@ -393,8 +390,8 @@ module datapath
          npc_ex <= 0;
          npc_mem <= 0;
          npc_wb <= 0;
-                 cond_branch_target_ex <= 0;
-                 tag_match_id <= 0;
+         cond_branch_target_ex <= 0;
+         tag_match_id <= 0;
          MDR_wb <= 0;
          a_ex <= 0;
          b_ex <= 0;
@@ -407,9 +404,9 @@ module datapath
          num_inst_ex <= 0;
       end
       else begin
-                 //-------------------------------------------------------------------//
-                 // PC resolution
-                 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
+         // PC resolution
+         //-------------------------------------------------------------------//
 
          if (pc_write) begin
             // Handle the case where conditional branch and jump is resolved at

@@ -30,7 +30,6 @@ module hazard_unit(
 );
    parameter RF_SELF_FORWARDING = 1;
    parameter DATA_FORWARDING = 1;
-   parameter PREDICT_ALWAYS_UNTAKEN = 1;
 
    reg         use_rs, use_rs_at_id, use_rt;
 

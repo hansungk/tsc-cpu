@@ -1,6 +1,7 @@
 `timescale 1ns/1ns
 `define WORD_SIZE 16    // data and address word size
 
+`include "constants.v"
 `include "opcodes.v"
 
 module cpu(
@@ -37,8 +38,14 @@ module cpu(
    // Currently not working with RF_SELF_FORWARDING disabled (SWD-LWD).
    parameter DATA_FORWARDING = 1;
 
-   // Enables always untaken, flush-on-miss branch prediction.
-   parameter PREDICT_ALWAYS_UNTAKEN = 0;
+   // Selects branch predictor.
+   //
+   // Set to one of the following constants:
+   // BPRED_NONE: always stall on branch
+   // BPRED_ALWAYS_UNTAKEN: always untaken, no BTB, flush-on-miss
+   // BPRED_ALWAYS_TAKEN: always taken, BTB without BHT, flush-on-miss
+   // BPRED_SATURATION_COUNTER: saturation counter using 2-bit BHT
+   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
 
    // Datapath - control Unit
    wire        clk;
@@ -84,7 +91,7 @@ module cpu(
    datapath #(.WORD_SIZE (`WORD_SIZE),
               .RF_SELF_FORWARDING(RF_SELF_FORWARDING),
               .DATA_FORWARDING(DATA_FORWARDING),
-              .PREDICT_ALWAYS_UNTAKEN(PREDICT_ALWAYS_UNTAKEN))
+              .BRANCH_PREDICTOR(BRANCH_PREDICTOR))
    DP (
        .clk(clk),
        .reset_n (reset_n),

@@ -65,3 +65,10 @@
 `define FORWARD_SRC_MEM 0
 `define FORWARD_SRC_WB 1
 `define FORWARD_SRC_RF 2
+
+// Branch predictor
+`define BPRED_NONE 0 /* always stall */
+`define BPRED_ALWAYS_UNTAKEN 1 /* no BTB, flush-on-miss */
+`define BPRED_ALWAYS_TAKEN 2 /* BTB, no BHT, flush-on-miss */
+`define BPRED_SATURATION_COUNTER 3 /* 2-bit saturation counter */
+`define BPRED_HYSTERESIS_COUNTER 4 /* 2-bit hysteresis counter */
