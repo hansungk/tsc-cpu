@@ -101,20 +101,20 @@ module datapath
    wire [WORD_SIZE-1:0] branch_target; // target PC for branches
 
    wire [WORD_SIZE-1:0] npc; // next PC; connected to either npc_pred
-							 // or pc + 1 depending on configuration
+                             // or pc + 1 depending on configuration
    wire [WORD_SIZE-1:0] npc_pred; // predicted next PC (branch predictor output)
-   wire 				tag_match; // BTB tag matched PC (branch predictor output)
-   wire 				update_tag; // update BTB tag (branch predictor input)
-   reg 					update_bht; // update BHT (branch predictor input)
-   reg [WORD_SIZE-1:0] 	pc_outcome; // PC when branch outcome is decided (branch predictor input)
-   reg 					branch_outcome; // branch outcome (branch predictor input)
+   wire                 tag_match; // BTB tag matched PC (branch predictor output)
+   wire                 update_tag; // update BTB tag (branch predictor input)
+   reg                  update_bht; // update BHT (branch predictor input)
+   reg [WORD_SIZE-1:0]  pc_outcome; // PC when branch outcome is decided (branch predictor input)
+   reg                 branch_outcome; // branch outcome (branch predictor input)
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
 
    // Unconditional branch prediction miss flag.  If branch prediction
    // is disabled, this is always set to 1.
-   wire 				jump_miss;
+   wire                 jump_miss;
 
    // Forward signals
    wire [1:0]           rs_forward_src;
@@ -138,9 +138,9 @@ module datapath
    // unconditional latches
    reg [WORD_SIZE-1:0]  pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
    reg [WORD_SIZE-1:0]  npc_id, npc_ex, npc_mem, npc_wb; // PC + 4 saved for branch resolution and JAL writeback
-   reg [WORD_SIZE-1:0] 	cond_branch_target_ex; // carry branch target for misprediction check
-   reg 					tag_match_id; // BTB search failed in IF;
-										  // should update in ID stage
+   reg [WORD_SIZE-1:0]  cond_branch_target_ex; // carry branch target for misprediction check
+   reg                  tag_match_id; // BTB search failed in IF;
+                                      // should update in ID stage
    reg [WORD_SIZE-1:0]  inst_type_ex, inst_type_mem, inst_type_wb;
    wire [WORD_SIZE-1:0] ir; // instruction register, bound to separate module
    reg [WORD_SIZE-1:0]  MDR_wb; // memory data register
@@ -217,7 +217,7 @@ module datapath
    HU (.opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
-	   .jump_miss(jump_miss),
+       .jump_miss(jump_miss),
        .branch_miss(cond_branch_miss),
        .rs_id(rs),
        .rt_id(rt),
@@ -251,16 +251,16 @@ module datapath
 
    branch_predictor #(.BTB_IDX_SIZE(8))
    BPRED (.clk(clk),
-		  .reset_n(reset_n),
-		  .update_tag(update_tag),
-		  .update_bht(update_bht),
-		  .pc(pc),
-		  .pc_collided(pc_id),
-		  .pc_outcome(pc_outcome),
-		  .branch_target(branch_target),
-		  .branch_outcome(branch_outcome),
-		  .tag_match(tag_match),
-		  .npc(npc_pred));
+          .reset_n(reset_n),
+          .update_tag(update_tag),
+          .update_bht(update_bht),
+          .pc(pc),
+          .pc_collided(pc_id),
+          .pc_outcome(pc_outcome),
+          .branch_target(branch_target),
+          .branch_outcome(branch_outcome),
+          .tag_match(tag_match),
+          .npc(npc_pred));
 
    //-------------------------------------------------------------------------//
    // Per-stage wire connections
@@ -288,21 +288,21 @@ module datapath
 
    // Branch targets
    assign jump_target = (opcode == `OPCODE_RTYPE && (func_code == `FUNC_JPR || func_code == `FUNC_JRL)) ?
-						data1 :
-						{pc[15:12], target_imm};
+                        data1 :
+                        {pc[15:12], target_imm};
    assign cond_branch_target = (pc_id + 1) + imm_signed; // FIXME
    assign branch_target = (inst_type == `INSTTYPE_JUMP) ?
-						  jump_target :
-						  cond_branch_target;
+                          jump_target :
+                          cond_branch_target;
    assign jump_miss = (inst_type == `INSTTYPE_JUMP) &&
-					  (PREDICT_ALWAYS_UNTAKEN ? (jump_target != npc_id) :
-					   PREDICT_ALWAYS_TAKEN ? (jump_target != npc_id) :
-					   1);
+                      (PREDICT_ALWAYS_UNTAKEN ? (jump_target != npc_id) :
+                       PREDICT_ALWAYS_TAKEN ? (jump_target != npc_id) :
+                       1);
 
    // If this is a branch instruction and BTB tag match failed in IF,
    // update tag in ID stage.
    assign update_tag = (inst_type == `INSTTYPE_JUMP || inst_type == `INSTTYPE_BRANCH) &&
-					   !tag_match_id;
+                       !tag_match_id;
    
    // EX stage
    // Data forwarding (see forwarding_unit.v)
@@ -333,38 +333,38 @@ module datapath
    assign resolved_pc = cond_branch_taken ? cond_branch_target_ex : (pc_ex + 1); // FIXME
    // Always miss if there is no prediction.
    assign cond_branch_miss = branch_ex && (PREDICT_ALWAYS_UNTAKEN ? cond_branch_taken :
-									  PREDICT_ALWAYS_TAKEN ? (resolved_pc != npc_ex) :
-									  1);
+                                                                          PREDICT_ALWAYS_TAKEN ? (resolved_pc != npc_ex) :
+                                                                          1);
 
    // Branch predictor update logic
    always @(*) begin
-	  // Update BHT according to the branch outcome.  Done regardless
-	  // of hit/miss.
-	  //
-	  // If both conditional branch in EX and unconditional branch in
-	  // ID was mispredicted (possible with indirect jumps such as
-	  // JPR), prioritize conditional branch because the ID stage
-	  // contains speculative, to-be-flushed instruction
-	  if (branch_ex) begin // at EX stage
-		 update_bht = 1;
-		 pc_outcome = pc_ex;
-		 branch_outcome = cond_branch_taken;
-	  end
-	  else if (inst_type == `INSTTYPE_JUMP) begin // at ID stage
-		 update_bht = 1;
-		 pc_outcome = pc_id;
-		 // All jump_miss happens on indirect jumps (e.g. JPR).
-		 //
-		 // We can't do better than just predicting always-taken on
-		 // indirect jumps, unless we examine return address stack.
-		 // Just assume always-taken.
-		 branch_outcome = 1; // !jump_miss;
-	  end
-	  else begin
-		 update_bht = 0;
-		 pc_outcome = pc_ex; // doesn't matter
-		 branch_outcome = 1;
-	  end
+          // Update BHT according to the branch outcome.  Done regardless
+          // of hit/miss.
+          //
+          // If both conditional branch in EX and unconditional branch in
+          // ID was mispredicted (possible with indirect jumps such as
+          // JPR), prioritize conditional branch because the ID stage
+          // contains speculative, to-be-flushed instruction
+          if (branch_ex) begin // at EX stage
+                 update_bht = 1;
+                 pc_outcome = pc_ex;
+                 branch_outcome = cond_branch_taken;
+          end
+          else if (inst_type == `INSTTYPE_JUMP) begin // at ID stage
+                 update_bht = 1;
+                 pc_outcome = pc_id;
+                 // All jump_miss happens on indirect jumps (e.g. JPR).
+                 //
+                 // We can't do better than just predicting always-taken on
+                 // indirect jumps, unless we examine return address stack.
+                 // Just assume always-taken.
+                 branch_outcome = 1; // !jump_miss;
+          end
+          else begin
+                 update_bht = 0;
+                 pc_outcome = pc_ex; // doesn't matter
+                 branch_outcome = 1;
+          end
    end
 
    // MEM stage
@@ -393,8 +393,8 @@ module datapath
          npc_ex <= 0;
          npc_mem <= 0;
          npc_wb <= 0;
-		 cond_branch_target_ex <= 0;
-		 tag_match_id <= 0;
+                 cond_branch_target_ex <= 0;
+                 tag_match_id <= 0;
          MDR_wb <= 0;
          a_ex <= 0;
          b_ex <= 0;
@@ -407,9 +407,9 @@ module datapath
          num_inst_ex <= 0;
       end
       else begin
-		 //-------------------------------------------------------------------//
-		 // PC resolution
-		 //-------------------------------------------------------------------//
+                 //-------------------------------------------------------------------//
+                 // PC resolution
+                 //-------------------------------------------------------------------//
 
          if (pc_write) begin
             // Handle the case where conditional branch and jump is resolved at
@@ -423,7 +423,7 @@ module datapath
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;
             end
-			// fall through on branch hit, jump or non-branch
+            // fall through on branch hit, jump or non-branch
             else if (jump_miss) begin
                if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
                   pc <= jump_target;
@@ -437,15 +437,15 @@ module datapath
                end
                // don't care about unknown jump types
             end
-			// fall through on branch hit or non-branch
+            // fall through on branch hit or non-branch
             else begin
                pc <= npc;
             end
          end
 
-		 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
          // Pipeline stage latches
-		 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
 
          // IF stage
          //
@@ -455,13 +455,13 @@ module datapath
             npc_id <= npc; // adder for PC
             pc_id <= pc; // for debugging purpose
          end
-		 // save BTB tag match result
-		 tag_match_id <= tag_match;
+         // save BTB tag match result
+         tag_match_id <= tag_match;
 
          // ID stage
          npc_ex <= npc_id;
          pc_ex <= pc_id;
-		 cond_branch_target_ex <= cond_branch_target;
+         cond_branch_target_ex <= cond_branch_target;
          num_inst_ex <= num_inst_id;
          inst_type_ex <= inst_type;
          rs_ex <= rs;
@@ -502,9 +502,9 @@ module datapath
          write_reg_wb <= write_reg_mem;
          imm_signed_wb <= imm_signed_mem;
 
-		 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
          // Control signal latches
-		 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
 
          // ID stage (EX+MEM+WB)
          // if hazard detected, insert bubbles into pipeline
@@ -535,13 +535,13 @@ module datapath
          reg_write_wb <= reg_write_mem;
          reg_write_src_wb <= reg_write_src_mem;
 
-		 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
          // Debug info
-		 //-------------------------------------------------------------------//
+         //-------------------------------------------------------------------//
 
          // output port assertion
          if (output_write_ex == 1) begin
-			// WWD can also benefit from forwarding
+            // WWD can also benefit from forwarding
             output_port <= a_forwarded;
          end
 
