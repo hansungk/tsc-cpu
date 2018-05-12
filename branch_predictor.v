@@ -76,8 +76,7 @@ module branch_predictor
             btb[btb_idx_collided] <= branch_target;
          end
 
-         // On branch outcome, at EX/ID stage
-         //
+         // On branch outcome, at EX(conditional)/ID(jump) stage
          if (update_bht) begin
             case (BRANCH_PREDICTOR)
               `BPRED_SATURATION_COUNTER: begin
