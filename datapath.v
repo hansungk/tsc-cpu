@@ -67,7 +67,9 @@ module datapath
     output [5:0]               func_code,
     output [2:0]               inst_type,
     output                     is_halted, 
-    output [WORD_SIZE-1:0]     num_inst
+    output [WORD_SIZE-1:0]     num_inst,
+    output reg [WORD_SIZE-1:0] num_branch, // number of branches encountered
+    output reg [WORD_SIZE-1:0] num_branch_miss // number of branch prediction miss
 );
    parameter RF_SELF_FORWARDING = 1;
    parameter DATA_FORWARDING = 1;
@@ -110,6 +112,9 @@ module datapath
 
    wire                 incr_num_inst; // increase num_inst when it becomes positive that the
                                        // fetched instruction will not be discarded
+   reg                  incr_num_branch; // increase num_branch when it becomes positive that the
+                                         // fetched instruction will not be discarded, and is a
+                                         // branch instruction
 
    // Unconditional branch prediction miss flag.  If branch prediction
    // is disabled, this is always set to 1.
@@ -341,11 +346,13 @@ module datapath
       // If both conditional branch in EX and unconditional branch in
       // ID was mispredicted (possible with indirect jumps such as
       // JPR), prioritize conditional branch because the ID stage
-      // contains speculative, to-be-flushed instruction
+      // contains speculative, to-be-flushed instruction.  Update
+      // num_branch here as well.  (same as PC resolution logic below)
       if (branch_ex) begin // at EX stage
          update_bht = 1;
          pc_outcome = pc_ex;
          branch_outcome = cond_branch_taken;
+         incr_num_branch = 1;
       end
       else if (inst_type == `INSTTYPE_JUMP) begin // at ID stage
          update_bht = 1;
@@ -356,11 +363,13 @@ module datapath
          // indirect jumps, unless we examine return address stack.
          // Just assume always-taken.
          branch_outcome = 1; // !jump_miss;
+         incr_num_branch = 1;
       end
       else begin
          update_bht = 0;
          pc_outcome = pc_ex; // doesn't matter
          branch_outcome = 1;
+         incr_num_branch = 0;
       end
    end
 
@@ -402,6 +411,8 @@ module datapath
          num_inst_if <= 0;
          num_inst_id <= 0;
          num_inst_ex <= 0;
+         num_branch <= 0;
+         num_branch_miss <= 0;
       end
       else begin
          //-------------------------------------------------------------------//
@@ -409,19 +420,27 @@ module datapath
          //-------------------------------------------------------------------//
 
          if (pc_write) begin
-            // Handle the case where conditional branch and jump is resolved at
-            // the same time.
+            // Should be careful about the case where conditional
+            // branch and jump is resolved at the same time.
             //
-            // Since branch is resolved in EX and jump in ID, PC resolution from
-            // branch is always older than from jump and thus should be handled
-            // first. Respect this order.
+            // Since branch is resolved in EX and jump in ID, the
+            // branch is always older than from jump, which means the
+            // jump in ID could be a 'false' one that will be flushed
+            // if the branch is revealed to be missed.  So handle
+            // conditional branch miss first.
             if (cond_branch_miss) begin
                pc <= resolved_pc;
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;
+               // Debug info: update branch miss count.
+               num_branch_miss <= num_branch_miss + 1;
             end
             // fall through on branch hit, jump or non-branch
             else if (jump_miss) begin
+               // We are now sure that this jump is not going to be
+               // flushed, and therefore that this is a valid jump
+               // miss.  Update num_branch_miss here as well.
+
                if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
                   pc <= jump_target;
                end
@@ -432,7 +451,8 @@ module datapath
                     end
                   endcase
                end
-               // don't care about unknown jump types
+               // Debug info: update branch miss count.
+               num_branch_miss <= num_branch_miss + 1;
             end
             // fall through on branch hit or non-branch
             else begin
@@ -550,6 +570,11 @@ module datapath
             num_inst_if <= num_inst_if + 1;
             num_inst_id <= num_inst_if;
          end
+
+         // num_branch update
+         // num_branch_miss is updated above
+         if (incr_num_branch)
+           num_branch <= num_branch + 1;
       end
    end
 endmodule

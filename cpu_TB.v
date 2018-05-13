@@ -23,11 +23,13 @@ module cpu_TB();
 
 	// for debuging purpose
 	wire [`WORD_SIZE-1:0] num_inst;		// number of instruction during execution
+	wire [`WORD_SIZE-1:0] num_branch;	// number of branch instruction
+	wire [`WORD_SIZE-1:0] num_branch_miss;	// number of branch misses
 	wire [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	wire is_halted;				// set if the cpu is halted
 
 	// instantiate the unit under test
-	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, output_port, is_halted);
+	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
 	Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);		   
 
 	// initialize inputs
@@ -158,6 +160,10 @@ module cpu_TB();
 			$display("All Pass!");
 		else
 			$display("Pass : %0d/%0d", Passed, `NUM_TEST);
+
+       // Display branch prediction result
+       $display("Branch prediction : %0d hit, %0d miss, %0d total",
+                num_branch - num_branch_miss, num_branch_miss, num_branch);
 		$finish;
 	end
 

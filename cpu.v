@@ -21,6 +21,8 @@ module cpu(
     inout [`WORD_SIZE-1:0] d_data, 
 
     output [`WORD_SIZE-1:0] num_inst, 
+    output [`WORD_SIZE-1:0] num_branch, 
+    output [`WORD_SIZE-1:0] num_branch_miss, 
     output [`WORD_SIZE-1:0] output_port, 
     output is_halted
 );
@@ -45,7 +47,7 @@ module cpu(
    // BPRED_ALWAYS_UNTAKEN: always untaken, no BTB, flush-on-miss
    // BPRED_ALWAYS_TAKEN: always taken, BTB without BHT, flush-on-miss
    // BPRED_SATURATION_COUNTER: saturation counter using 2-bit BHT
-   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
+   parameter BRANCH_PREDICTOR = `BPRED_NONE;
 
    // Datapath - control Unit
    wire        clk;
@@ -125,6 +127,8 @@ module cpu(
        .func_code (func_code),
        .inst_type (inst_type),
        .is_halted(is_halted),
-       .num_inst (num_inst)
+       .num_inst (num_inst),
+       .num_branch (num_branch),
+       .num_branch_miss (num_branch_miss)
        );
 endmodule
