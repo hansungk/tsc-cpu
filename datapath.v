@@ -20,10 +20,15 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 `include "constants.v"
+`include "opcodes.v"
+
 `define WORD_SIZE 16
 
 module datapath
-  #(parameter WORD_SIZE = `WORD_SIZE)
+  #(parameter WORD_SIZE = `WORD_SIZE,
+    parameter RF_SELF_FORWARDING = 1,
+    parameter DATA_FORWARDING = 1,
+    parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER)
    (input                      clk,
     input                      reset_n,
     input [1:0]                pc_src,
@@ -71,10 +76,6 @@ module datapath
     output reg [WORD_SIZE-1:0] num_branch, // number of branches encountered
     output reg [WORD_SIZE-1:0] num_branch_miss // number of branch prediction miss
 );
-   parameter RF_SELF_FORWARDING = 1;
-   parameter DATA_FORWARDING = 1;
-   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
-
    //-------------------------------------------------------------------------//
    // Wires
    //-------------------------------------------------------------------------//

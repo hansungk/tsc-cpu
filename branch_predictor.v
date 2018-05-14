@@ -1,9 +1,15 @@
 `timescale 1ns/1ns
 
+`include "constants.v"
+`include "opcodes.v"
+
 `define WORD_SIZE 16
 
 module branch_predictor
-  #(parameter WORD_SIZE = `WORD_SIZE)
+  #(parameter WORD_SIZE = `WORD_SIZE,
+    parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER,
+    parameter BTB_IDX_SIZE = 8,
+    parameter BHSR_SIZE = 4)
    (input                      clk,
     input                      reset_n, // clear BTB to all zero
     input                      update_tag, // update tag on collision; synchronous write
@@ -18,15 +24,14 @@ module branch_predictor
     output                     tag_match, // tag matched PC
     output reg [WORD_SIZE-1:0] npc // predictd next PC; asynchronous read
 );
-   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
-   parameter BTB_IDX_SIZE = 8;
-
    // Tag table
    reg [WORD_SIZE-BTB_IDX_SIZE-1:0] tags[2**BTB_IDX_SIZE-1:0];
    // Branch history table
    reg [1:0]                        bht[2**BTB_IDX_SIZE-1:0];
    // Branch target buffer
    reg [BTB_IDX_SIZE-1:0]           btb[2**BTB_IDX_SIZE-1:0];
+   // Global BHSR (Gshare)
+   reg [BHSR_SIZE-1:0]              bhsr;
    // BTB index
    wire [BTB_IDX_SIZE-1:0]          btb_idx;
    assign btb_idx = pc[BTB_IDX_SIZE-1:0];
@@ -66,6 +71,7 @@ module branch_predictor
               bht[i] <= 2'b10; // initialize to 'weakly taken'
             btb[i] <= 0;
          end
+         bhsr <= 0; // clear history
       end
       else begin
          // On collision, at ID stage

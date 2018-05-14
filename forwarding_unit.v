@@ -1,16 +1,19 @@
 `timescale 1ns/1ns
 
-module forwarding_unit(
-   input [1:0]      rs_ex,
-   input [1:0]      rt_ex,
-   input            reg_write_mem,
-   input            reg_write_wb,
-   input [1:0]      write_reg_mem,
-   input [1:0]      write_reg_wb,
-   output reg [1:0] rs_forward_src, // 0: from MEM, 1: from WB, 2: no forwarding (RF)
-   output reg [1:0] rt_forward_src // 0: from MEM, 1: from WB, 2: no forwarding (RF)
+`include "constants.v"
+`include "opcodes.v"
+
+module forwarding_unit
+  #(parameter DATA_FORWARDING = 1)
+   (input [1:0]      rs_ex,
+    input [1:0]      rt_ex,
+    input            reg_write_mem,
+    input            reg_write_wb,
+    input [1:0]      write_reg_mem,
+    input [1:0]      write_reg_wb,
+    output reg [1:0] rs_forward_src, // 0: from MEM, 1: from WB, 2: no forwarding (RF)
+    output reg [1:0] rt_forward_src // 0: from MEM, 1: from WB, 2: no forwarding (RF)
 );
-   parameter DATA_FORWARDING = 1;
 
    always @(*) begin
       // If DATA_FORWARDING is disabled, r*_forward_src will always be set to

@@ -1,37 +1,38 @@
 `timescale 1ns/1ns
 
 `include "constants.v"
+`include "opcodes.v"
 
-module hazard_unit(
-   input [3:0] opcode,
-   input [2:0] inst_type,
-   input [5:0] func_code,
-   input 	   jump_miss, // misprediction for unconditional branch
-   input 	   branch_miss, // used for branch prediction 
-   input [1:0] rs_id, 
-   input [1:0] rt_id, 
-   input 	   reg_write_ex,
-   input 	   reg_write_mem,
-   input 	   reg_write_wb,
-   input [1:0] write_reg_ex, 
-   input [1:0] write_reg_mem, 
-   input [1:0] write_reg_wb, 
-   input 	   d_mem_read_ex,
-   input 	   d_mem_read_mem,
-   input 	   d_mem_read_wb,
-   input [1:0] rt_ex, 
-   input [1:0] rt_mem, 
-   input [1:0] rt_wb, 
-   output reg  bubblify, // reset all control signals to zero
-   output reg  flush_if, // reset IR to nop
-   output reg  pc_write,
-   output reg  ir_write,
-   output reg  incr_num_inst 
+module hazard_unit
+  #(parameter RF_SELF_FORWARDING = 1,
+    parameter DATA_FORWARDING = 1)
+   (
+    input [3:0] opcode,
+    input [2:0] inst_type,
+    input [5:0] func_code,
+    input       jump_miss, // misprediction for unconditional branch
+    input       branch_miss, // used for branch prediction 
+    input [1:0] rs_id, 
+    input [1:0] rt_id, 
+    input       reg_write_ex,
+    input       reg_write_mem,
+    input       reg_write_wb,
+    input [1:0] write_reg_ex, 
+    input [1:0] write_reg_mem, 
+    input [1:0] write_reg_wb, 
+    input       d_mem_read_ex,
+    input       d_mem_read_mem,
+    input       d_mem_read_wb,
+    input [1:0] rt_ex, 
+    input [1:0] rt_mem, 
+    input [1:0] rt_wb, 
+    output reg  bubblify, // reset all control signals to zero
+    output reg  flush_if, // reset IR to nop
+    output reg  pc_write,
+    output reg  ir_write,
+    output reg  incr_num_inst 
 );
-   parameter RF_SELF_FORWARDING = 1;
-   parameter DATA_FORWARDING = 1;
-
-   reg         use_rs, use_rs_at_id, use_rt;
+   reg          use_rs, use_rs_at_id, use_rt;
 
    always @* begin
       // defaults
