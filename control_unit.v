@@ -84,6 +84,8 @@ module control_unit(
       reg_dst = `REGDST_RD;
       reg_write = 0; // only write for RTYPE and LOAD
       ALUMode = 0;
+      alu_src_a = 0;
+      alu_src_b = 0;
       alu_src_swap = 0;
       output_write = 0;
 

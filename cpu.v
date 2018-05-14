@@ -47,7 +47,8 @@ module cpu(
    // BPRED_ALWAYS_UNTAKEN: always untaken, no BTB, flush-on-miss
    // BPRED_ALWAYS_TAKEN: always taken, BTB without BHT, flush-on-miss
    // BPRED_SATURATION_COUNTER: saturation counter using 2-bit BHT
-   parameter BRANCH_PREDICTOR = `BPRED_NONE;
+   // BPRED_HYSTERESIS_COUNTER: hysteresis counter using 2-bit BHT
+   parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER;
 
    // Datapath - control Unit
    wire        clk;

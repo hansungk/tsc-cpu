@@ -394,11 +394,12 @@ module datapath
       if (!reset_n) begin
          // reset all pipeline registers and control signal registers
          // to zero to prevent any initial output
-         pc <= 0;
+         pc <= 0; pc_id <= 0; pc_ex <= 0; pc_mem <= 0; pc_wb <= 0;
          npc_id <= 0;
          npc_ex <= 0;
          npc_mem <= 0;
          npc_wb <= 0;
+         halt_ex <= 0; halt_mem <= 0; halt_wb <= 0;
          cond_branch_target_ex <= 0;
          tag_match_id <= 0;
          MDR_wb <= 0;
@@ -406,6 +407,8 @@ module datapath
          b_ex <= 0;
          b_mem <= 0;
          alu_out_mem <= 0;
+         alu_src_a_ex <= 0; alu_src_b_ex <= 0;
+         alu_src_swap_ex <= 0;
          output_write_ex <= 0;
          output_port <= {WORD_SIZE{1'bz}}; // initially float
          num_inst_if <= 0;
@@ -424,9 +427,9 @@ module datapath
             // branch and jump is resolved at the same time.
             //
             // Since branch is resolved in EX and jump in ID, the
-            // branch is always older than from jump, which means the
-            // jump in ID could be a 'false' one that will be flushed
-            // if the branch is revealed to be missed.  So handle
+            // branch is always older than jump, which means the jump
+            // in ID could be a 'false' one that will be flushed if
+            // the branch is revealed to be missed.  So handle
             // conditional branch miss first.
             if (cond_branch_miss) begin
                pc <= resolved_pc;
