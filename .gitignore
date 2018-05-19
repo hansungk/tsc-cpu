@@ -1,2 +1,4 @@
 pipelined
 *.vcd
+*.aux
+*.log
