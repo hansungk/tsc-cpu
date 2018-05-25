@@ -23,13 +23,17 @@ module hazard_unit
     input       d_mem_read_ex,
     input       d_mem_read_mem,
     input       d_mem_read_wb,
+    input       d_ready,
     input [1:0] rt_ex, 
     input [1:0] rt_mem, 
     input [1:0] rt_wb, 
-    output reg  bubblify, // reset all control signals to zero
+    output reg  bubblify_id, // reset all control signals of ID to zero
+    output reg  bubblify_mem, // reset all control signals of MEM to zero
     output reg  flush_if, // reset IR to nop
     output reg  pc_write,
     output reg  ir_write,
+    output reg  freeze_ex,
+    output reg  freeze_mem,
     output reg  incr_num_inst 
 );
    reg          use_rs, use_rs_at_id, use_rt;
@@ -38,7 +42,10 @@ module hazard_unit
       // defaults
       pc_write = 1;
       ir_write = 1;
-      bubblify = 0;
+      freeze_ex = 0;
+      freeze_mem = 0;
+      bubblify_id = 0;
+      bubblify_mem = 0;
       flush_if = 0;
 
       //----------------------------------------------------------------------//
@@ -62,8 +69,22 @@ module hazard_unit
                inst_type == `INSTTYPE_STORE ||
                inst_type == `INSTTYPE_BRANCH;
 
+      // MEM stage stall.
+      //
+      // The only hazard for MEM is when the memory operation is not finished
+      // within its cycle.  This is a self-stall -- it stalls itself and all
+      // younger stages regardless of data dependence.  Because of this lack of
+      // data dependence, ID and EX does not have to check for the d_ready
+      // condition.
+      if (d_mem_read_mem && !d_ready) begin
+         pc_write = 0;
+         ir_write = 0;
+         freeze_ex = 1;
+         freeze_mem = 1;
+         bubblify_mem = 1;
+      end
       // Bypass unnecessary WB check by prefixing !RF_SELF_FORWARDING.
-      if (!DATA_FORWARDING &&
+      else if (!DATA_FORWARDING &&
           ((                       use_rs && reg_write_ex  && rs_id == write_reg_ex) ||
            (                       use_rs && reg_write_mem && rs_id == write_reg_mem) ||
            (!RF_SELF_FORWARDING && use_rs && reg_write_wb  && rs_id == write_reg_wb) ||
@@ -83,7 +104,7 @@ module hazard_unit
          // stall ID
          pc_write = 0;
          ir_write = 0;
-         bubblify = 1;
+         bubblify_id = 1;
       end
       else begin
          //-------------------------------------------------------------------//
@@ -102,12 +123,12 @@ module hazard_unit
          if (branch_miss) begin
             // On branch miss, flush IF and bubblify ID, effectively erasing two
             // instructions.
-            bubblify = 1;
+            bubblify_id = 1;
             flush_if = 1;
          end
       end
 
       // don't increase num_inst in any kind of hazard
-      incr_num_inst = !(bubblify || flush_if);
+      incr_num_inst = !(bubblify_id || bubblify_mem || !pc_write ||  flush_if);
    end
 endmodule // hazard_unit

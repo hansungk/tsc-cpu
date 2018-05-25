@@ -5,26 +5,27 @@
 `include "opcodes.v"
 
 module cpu(
-    input clk, 
-    input reset_n,
+    input                   clk, 
+    input                   reset_n,
 
     // Instruction memory interface
-    output i_readM, 
-    output i_writeM, 
+    output                  i_readM, 
+    output                  i_writeM, 
     output [`WORD_SIZE-1:0] i_address, 
-    inout [`WORD_SIZE-1:0] i_data, 
+    inout [`WORD_SIZE-1:0]  i_data, 
 
     // Data memory interface
-    output d_readM, 
-    output d_writeM, 
+    output                  d_readM, 
+    output                  d_writeM, 
     output [`WORD_SIZE-1:0] d_address, 
-    inout [`WORD_SIZE-1:0] d_data, 
+    inout [`WORD_SIZE-1:0]  d_data,
+    input                   d_ready,
 
     output [`WORD_SIZE-1:0] num_inst, 
     output [`WORD_SIZE-1:0] num_branch, 
     output [`WORD_SIZE-1:0] num_branch_miss, 
     output [`WORD_SIZE-1:0] output_port, 
-    output is_halted
+    output                  is_halted
 );
    //===-------------------------------------------------------------------===//
    // CPU feature configurations
@@ -111,6 +112,7 @@ module cpu(
        .d_mem_read (d_mem_read),
        .i_mem_write (i_mem_write),
        .d_mem_write (d_mem_write),
+       .d_ready (d_ready),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
        .halt_id(halt_id),

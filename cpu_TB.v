@@ -20,6 +20,7 @@ module cpu_TB();
 	wire d_writeM;
 	wire [`WORD_SIZE-1:0] d_address;
 	wire [`WORD_SIZE-1:0] d_data;
+    wire d_ready;
 
 	// for debuging purpose
 	wire [`WORD_SIZE-1:0] num_inst;		// number of instruction during execution
@@ -29,8 +30,35 @@ module cpu_TB();
 	wire is_halted;				// set if the cpu is halted
 
 	// instantiate the unit under test
-	cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
-	Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);		   
+	// cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
+	cpu UUT (clk,
+             reset_n,
+             i_readM,
+             i_writeM,
+             i_address,
+             i_data,
+             d_readM,
+             d_writeM,
+             d_address,
+             d_data,
+             d_ready,
+             num_inst,
+             num_branch,
+             num_branch_miss,
+             output_port,
+             is_halted);
+	// Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
+	Memory NUUT(.clk(!clk),
+                .reset_n(reset_n),
+                .i_readM(i_readM),
+                .i_writeM(i_writeM),
+                .i_address(i_address),
+                .i_data(i_data),
+                .d_readM(d_readM),
+                .d_writeM(d_writeM),
+                .d_address(d_address),
+                .d_data(d_data),
+                .d_ready(d_ready));
 
 	// initialize inputs
 	initial begin

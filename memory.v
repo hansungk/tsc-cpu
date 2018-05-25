@@ -4,7 +4,7 @@
 `define WORD_SIZE 16	//	instead of 2^16 words to reduce memory
 			//	requirements in the Active-HDL simulator 
 
-module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
+module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_ready);
    input clk;
    wire  clk;
    input reset_n;
@@ -19,6 +19,8 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_wri
    wire [`WORD_SIZE-1:0]  i_address;
    inout [`WORD_SIZE-1:0] i_data;
    wire [`WORD_SIZE-1:0]  i_data;
+   output                 i_ready;
+   wire                   i_ready;
    
    // Data memory interface
    input                  d_readM;
@@ -29,6 +31,8 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_wri
    wire [`WORD_SIZE-1:0]  d_address;
    inout [`WORD_SIZE-1:0] d_data;
    wire [`WORD_SIZE-1:0]  d_data;
+   output                 d_ready;
+   wire                   d_ready;
    
    reg [`WORD_SIZE-1:0]   memory [0:`MEMORY_SIZE-1];
    reg [`WORD_SIZE-1:0]   i_outputData;
@@ -50,13 +54,10 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_wri
    reg [`WORD_SIZE-1:0]   d_address_temp;
    reg [`WORD_SIZE-1:0]   d_data_temp;
 
-   wire                   busy;
-   assign busy = (count != 0);
-
+   assign d_ready = (count == 0);
    assign i_data = i_readM?i_outputData:`WORD_SIZE'bz;
-
    // show read data at the last cycle
-   assign d_data = (!busy && d_readM_temp) ? d_outputData : `WORD_SIZE'bz;
+   assign d_data = (d_readM_temp && d_ready) ? d_outputData : `WORD_SIZE'bz;
    
    always@(posedge clk)
 	 if(!reset_n)

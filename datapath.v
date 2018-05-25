@@ -51,7 +51,8 @@ module datapath
     input                      i_mem_read, 
     input                      d_mem_read, 
     input                      i_mem_write,
-    input                      d_mem_write, 
+    input                      d_mem_write,
+    input                      d_ready,
 
     // WB control signals
     input                      reg_write,
@@ -89,7 +90,7 @@ module datapath
    // Hazard signals
    wire                 pc_write, pc_write_cond;
    wire                 ir_write;
-   wire                 bubblify; // reset all control signals to zero
+   wire                 bubblify_id; // reset all control signals to zero
    wire                 flush_if; // reset IR to nop
    wire                 cond_branch_taken;
 
@@ -234,13 +235,17 @@ module datapath
        .d_mem_read_ex(d_mem_read_ex),
        .d_mem_read_mem(d_mem_read_mem),
        .d_mem_read_wb(d_mem_read_wb),
+       .d_ready(d_ready),
        .rt_ex(rt_ex),
        .rt_mem(rt_mem),
        .rt_wb(rt_wb),
-       .bubblify(bubblify),
+       .bubblify_id(bubblify_id),
+       .bubblify_mem(bubblify_mem),
        .flush_if(flush_if),
        .pc_write(pc_write),
        .ir_write(ir_write),
+       .freeze_ex(freeze_ex),
+       .freeze_mem(freeze_mem),
        .incr_num_inst(incr_num_inst));
 
    forwarding_unit #(.DATA_FORWARDING(DATA_FORWARDING))
@@ -372,6 +377,12 @@ module datapath
          branch_outcome = 1;
          incr_num_branch = 0;
       end
+
+      // Cancel all this if this EX stage was stalled.
+      // Prevents BHT continually increasing/decreasing when the pipeline
+      // stalled while handling a branch.
+      if (freeze_ex)
+        update_bht = 0;
    end
 
    // MEM stage
@@ -478,41 +489,46 @@ module datapath
          end
          // save BTB tag match result
          tag_match_id <= tag_match;
-
-         // ID stage
-         npc_ex <= npc_id;
-         pc_ex <= pc_id;
-         cond_branch_target_ex <= cond_branch_target;
-         num_inst_ex <= num_inst_id;
-         inst_type_ex <= inst_type;
-         rs_ex <= rs;
-         rt_ex <= rt;
-         rd_ex <= rd;
-         a_ex <= data1;
-         b_ex <= data2;
-         write_reg_ex <= (reg_dst == `REGDST_RT) ? rt :
-                         (reg_dst == `REGDST_RD) ? rd :
-                         /*(reg_dst == `REGDST_2) ?*/ 2'd2;
-         imm_signed_ex <= imm_signed;
-         output_write_ex <= output_write;
-
          // For branch, save num_inst_if so that it can be restored in case of
          // pipeline flush due to branch prediction miss.
          if (inst_type == `INSTTYPE_BRANCH)
            num_inst_if_saved <= num_inst_if;
 
+         // ID stage
+         if (!freeze_ex) begin
+            npc_ex <= npc_id;
+            pc_ex <= pc_id;
+            cond_branch_target_ex <= cond_branch_target;
+            num_inst_ex <= num_inst_id;
+            inst_type_ex <= inst_type;
+            rs_ex <= rs;
+            rt_ex <= rt;
+            rd_ex <= rd;
+            a_ex <= data1;
+            b_ex <= data2;
+            write_reg_ex <= (reg_dst == `REGDST_RT) ? rt :
+                            (reg_dst == `REGDST_RD) ? rd :
+                            /*(reg_dst == `REGDST_2) ?*/ 2'd2;
+            imm_signed_ex <= imm_signed;
+            output_write_ex <= output_write;
+         end
+
          // EX stage
-         npc_mem <= npc_ex;
-         pc_mem <= pc_ex;
-         inst_type_mem <= inst_type_ex;
-         rs_mem <= rs_ex;
-         rt_mem <= rt_ex;
-         b_mem <= b_ex;
-         alu_out_mem <= alu_result;
-         write_reg_mem <= write_reg_ex;
-         imm_signed_mem <= imm_signed_ex;
+         if (!freeze_mem) begin
+            npc_mem <= npc_ex;
+            pc_mem <= pc_ex;
+            inst_type_mem <= inst_type_ex;
+            rs_mem <= rs_ex;
+            rt_mem <= rt_ex;
+            b_mem <= b_ex;
+            alu_out_mem <= alu_result;
+            write_reg_mem <= write_reg_ex;
+            imm_signed_mem <= imm_signed_ex;
+         end
 
          // MEM stage
+         // there's no such thing as freeze_wb; if something reaches WB, it is
+         // gone for good
          npc_wb <= npc_mem;
          pc_wb <= pc_mem;
          inst_type_wb <= inst_type_mem;
@@ -529,32 +545,36 @@ module datapath
 
          // ID stage (EX+MEM+WB)
          // if hazard detected, insert bubbles into pipeline
-         halt_ex          <= bubblify ? 0 : halt_id;
-         branch_ex        <= bubblify ? 0 : branch;
-         alu_op_ex        <= bubblify ? 0 : alu_op;
-         alu_src_a_ex     <= bubblify ? 0 : alu_src_a;
-         alu_src_b_ex     <= bubblify ? 0 : alu_src_b;
-         alu_src_swap_ex  <= bubblify ? 0 : alu_src_swap;
-         i_mem_read_ex    <= bubblify ? 0 : i_mem_read;
-         d_mem_read_ex    <= bubblify ? 0 : d_mem_read;
-         i_mem_write_ex   <= bubblify ? 0 : i_mem_write;
-         d_mem_write_ex   <= bubblify ? 0 : d_mem_write;
-         reg_write_ex     <= bubblify ? 0 : reg_write;
-         reg_write_src_ex <= bubblify ? 0 : reg_write_src;
+         if (!freeze_ex) begin
+            halt_ex          <= bubblify_id ? 0 : halt_id;
+            branch_ex        <= bubblify_id ? 0 : branch;
+            alu_op_ex        <= bubblify_id ? 0 : alu_op;
+            alu_src_a_ex     <= bubblify_id ? 0 : alu_src_a;
+            alu_src_b_ex     <= bubblify_id ? 0 : alu_src_b;
+            alu_src_swap_ex  <= bubblify_id ? 0 : alu_src_swap;
+            i_mem_read_ex    <= bubblify_id ? 0 : i_mem_read;
+            d_mem_read_ex    <= bubblify_id ? 0 : d_mem_read;
+            i_mem_write_ex   <= bubblify_id ? 0 : i_mem_write;
+            d_mem_write_ex   <= bubblify_id ? 0 : d_mem_write;
+            reg_write_ex     <= bubblify_id ? 0 : reg_write;
+            reg_write_src_ex <= bubblify_id ? 0 : reg_write_src;
+         end
 
          // EX stage (MEM+WB)
-         halt_mem <= halt_ex;
-         i_mem_read_mem <= i_mem_read_ex;
-         d_mem_read_mem <= d_mem_read_ex;
-         i_mem_write_mem <= i_mem_write_ex;
-         d_mem_write_mem <= d_mem_write_ex;
-         reg_write_mem <= reg_write_ex;
-         reg_write_src_mem <= reg_write_src_ex;
+         if (!freeze_mem) begin
+            halt_mem <= halt_ex;
+            i_mem_read_mem <= i_mem_read_ex;
+            d_mem_read_mem <= d_mem_read_ex;
+            i_mem_write_mem <= i_mem_write_ex;
+            d_mem_write_mem <= d_mem_write_ex;
+            reg_write_mem <= reg_write_ex;
+            reg_write_src_mem <= reg_write_src_ex;
+         end
 
          // MEM stage (WB)
-         halt_wb <= halt_mem;
-         reg_write_wb <= reg_write_mem;
-         reg_write_src_wb <= reg_write_src_mem;
+         halt_wb          <= bubblify_mem ? 0 : halt_mem;
+         reg_write_wb     <= bubblify_mem ? 0 : reg_write_mem;
+         reg_write_src_wb <= bubblify_mem ? 0 : reg_write_src_mem;
 
          //-------------------------------------------------------------------//
          // Debug info
