@@ -1,0 +1,162 @@
+[*]
+[*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
+[*] Fri May 25 17:34:24 2018
+[*]
+[dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
+[dumpfile_mtime] "Fri May 25 17:33:30 2018"
+[dumpfile_size] 115065
+[savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/cache.gtkw"
+[timestart] 7020000
+[size] 1440 855
+[pos] -1 -1
+*-18.166470 7896000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] cpu_TB.
+[treeopen] cpu_TB.UUT.
+[sst_width] 195
+[signals_width] 429
+[sst_expanded] 1
+[sst_vpaned_height] 193
+@22
+cpu_TB.Passed[15:0]
+@28
+cpu_TB.clk
+cpu_TB.reset_n
+@200
+-Memory
+@28
+cpu_TB.NUUT.busy
+@23
+cpu_TB.d_address[15:0]
+@22
+cpu_TB.NUUT.d_address_temp[15:0]
+cpu_TB.d_data[15:0]
+cpu_TB.NUUT.d_data_temp[15:0]
+@28
+cpu_TB.d_readM
+cpu_TB.NUUT.d_readM_temp
+cpu_TB.d_writeM
+cpu_TB.NUUT.d_writeM_temp
+@22
+cpu_TB.i[15:0]
+cpu_TB.i_address[15:0]
+cpu_TB.i_data[15:0]
+@28
+cpu_TB.i_readM
+cpu_TB.i_writeM
+cpu_TB.is_halted
+@22
+cpu_TB.num_clock[15:0]
+cpu_TB.num_inst[15:0]
+@28
+cpu_TB.UUT.DP.incr_num_inst
+@22
+cpu_TB.output_port[15:0]
+@28
+cpu_TB.testbench_finish
+@22
+cpu_TB.UUT.DP.pc[15:0]
+@28
+cpu_TB.UUT.DP.pc_write
+@200
+-ID
+@22
+cpu_TB.UUT.DP.pc_id[15:0]
+cpu_TB.UUT.DP.npc_id[15:0]
+cpu_TB.UUT.DP.num_inst_id[15:0]
+@c00022
+cpu_TB.UUT.DP.ir[15:0]
+@28
+(0)cpu_TB.UUT.DP.ir[15:0]
+(1)cpu_TB.UUT.DP.ir[15:0]
+(2)cpu_TB.UUT.DP.ir[15:0]
+(3)cpu_TB.UUT.DP.ir[15:0]
+(4)cpu_TB.UUT.DP.ir[15:0]
+(5)cpu_TB.UUT.DP.ir[15:0]
+(6)cpu_TB.UUT.DP.ir[15:0]
+(7)cpu_TB.UUT.DP.ir[15:0]
+(8)cpu_TB.UUT.DP.ir[15:0]
+(9)cpu_TB.UUT.DP.ir[15:0]
+(10)cpu_TB.UUT.DP.ir[15:0]
+(11)cpu_TB.UUT.DP.ir[15:0]
+(12)cpu_TB.UUT.DP.ir[15:0]
+(13)cpu_TB.UUT.DP.ir[15:0]
+(14)cpu_TB.UUT.DP.ir[15:0]
+(15)cpu_TB.UUT.DP.ir[15:0]
+@1401200
+-group_end
+@22
+cpu_TB.UUT.DP.opcode[3:0]
+cpu_TB.UUT.DP.func_code[5:0]
+@28
+cpu_TB.UUT.DP.rs[1:0]
+cpu_TB.UUT.DP.rt[1:0]
+cpu_TB.UUT.DP.rd[1:0]
+cpu_TB.UUT.DP.reg_dst[1:0]
+cpu_TB.UUT.DP.inst_type[2:0]
+@22
+cpu_TB.UUT.DP.data1[15:0]
+cpu_TB.UUT.DP.data2[15:0]
+@28
+cpu_TB.UUT.DP.jump_miss
+@22
+cpu_TB.UUT.DP.jump_target[15:0]
+@28
+cpu_TB.UUT.DP.branch
+@200
+-ID hazard
+@28
+cpu_TB.UUT.DP.HU.use_rs
+@22
+cpu_TB.UUT.DP.resolved_pc[15:0]
+@28
+cpu_TB.UUT.DP.HU.bubblify
+cpu_TB.UUT.DP.HU.flush_if
+@200
+-Branch predictor
+@22
+cpu_TB.UUT.DP.BPRED.btb_idx[7:0]
+cpu_TB.UUT.DP.BPRED.pc_tag[7:0]
+@28
+cpu_TB.UUT.DP.BPRED.tag_match
+cpu_TB.UUT.DP.BPRED.update_tag
+@22
+cpu_TB.UUT.DP.BPRED.branch_target[15:0]
+cpu_TB.UUT.DP.BPRED.npc[15:0]
+@200
+-EX
+@22
+cpu_TB.UUT.DP.npc_ex[15:0]
+cpu_TB.UUT.DP.resolved_pc[15:0]
+cpu_TB.UUT.DP.resolved_pc[15:0]
+cpu_TB.UUT.DP.alu_operand_1[15:0]
+cpu_TB.UUT.DP.alu_operand_2[15:0]
+cpu_TB.UUT.DP.alu_result[15:0]
+cpu_TB.UUT.DP.b_ex[15:0]
+@28
+cpu_TB.UUT.DP.write_reg_ex[1:0]
+cpu_TB.UUT.DP.rs_forward_src[1:0]
+cpu_TB.UUT.DP.rt_forward_src[1:0]
+@200
+-MEM
+@22
+cpu_TB.UUT.DP.alu_out_mem[15:0]
+@28
+cpu_TB.UUT.DP.d_mem_write_mem
+@22
+cpu_TB.UUT.DP.b_mem[15:0]
+@28
+cpu_TB.UUT.DP.reg_write_mem
+cpu_TB.UUT.DP.write_reg_mem[1:0]
+@200
+-WB
+@28
+cpu_TB.UUT.DP.reg_write_wb
+cpu_TB.UUT.DP.write_reg_wb[1:0]
+@22
+cpu_TB.UUT.DP.writeData[15:0]
+@c00200
+-cpu_TB.UUT.DP.write_reg_wb
+@1401200
+-group_end
+[pattern_trace] 1
+[pattern_trace] 0
