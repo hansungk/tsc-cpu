@@ -20,6 +20,8 @@ module cpu(
     output [`WORD_SIZE-1:0] d_address, 
     inout [`WORD_SIZE-1:0]  d_data,
     input                   d_ready,
+    input                   d_next_ready,
+    input [`WORD_SIZE-1:0]  d_written_address,
 
     output [`WORD_SIZE-1:0] num_inst, 
     output [`WORD_SIZE-1:0] num_branch, 
@@ -113,6 +115,8 @@ module cpu(
        .i_mem_write (i_mem_write),
        .d_mem_write (d_mem_write),
        .d_ready (d_ready),
+       .d_next_ready (d_next_ready),
+       .d_written_address (d_written_address),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
        .halt_id(halt_id),

@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
-[*] Fri May 25 19:17:42 2018
+[*] Sat May 26 01:23:46 2018
 [*]
 [dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
-[dumpfile_mtime] "Fri May 25 19:10:01 2018"
-[dumpfile_size] 124393
+[dumpfile_mtime] "Sat May 26 01:08:50 2018"
+[dumpfile_size] 115768
 [savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/cache.gtkw"
-[timestart] 7521000
+[timestart] 6911000
 [size] 1440 855
 [pos] -1 -1
-*-18.166470 8152000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.166470 7855000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
@@ -34,7 +34,10 @@ cpu_TB.d_readM
 cpu_TB.NUUT.d_readM_temp
 cpu_TB.d_writeM
 cpu_TB.NUUT.d_writeM_temp
+cpu_TB.NUUT.count[1:0]
 cpu_TB.NUUT.d_ready
+@29
+cpu_TB.NUUT.d_next_ready
 @22
 cpu_TB.i[15:0]
 cpu_TB.i_address[15:0]

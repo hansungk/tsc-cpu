@@ -4,7 +4,7 @@
 `define WORD_SIZE 16	//	instead of 2^16 words to reduce memory
 			//	requirements in the Active-HDL simulator 
 
-module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_ready);
+module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_ready, d_next_ready, d_written_address);
    input clk;
    wire  clk;
    input reset_n;
@@ -33,6 +33,10 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    wire [`WORD_SIZE-1:0]  d_data;
    output                 d_ready;
    wire                   d_ready;
+   output                 d_next_ready;
+   reg                    d_next_ready;
+   output [`WORD_SIZE-1:0] d_written_address;
+   wire [`WORD_SIZE-1:0]   d_written_address;
    
    reg [`WORD_SIZE-1:0]   memory [0:`MEMORY_SIZE-1];
    reg [`WORD_SIZE-1:0]   i_outputData;
@@ -57,7 +61,8 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    assign d_ready = (count == 0);
    assign i_data = i_readM?i_outputData:`WORD_SIZE'bz;
    // show read data at the last cycle
-   assign d_data = (d_readM_temp && d_ready) ? d_outputData : `WORD_SIZE'bz;
+   assign d_data = (d_readM && count == 0) ? d_outputData : `WORD_SIZE'bz;
+   assign d_written_address = d_address_temp;
    
    always@(posedge clk)
 	 if(!reset_n)
@@ -266,13 +271,18 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
           d_writeM_temp <= 0;
           d_address_temp <= 0;
           d_data_temp <= `WORD_SIZE'bz;
+          d_next_ready <= 1;
           count <= 0;
 	   end
      else
        begin
           if(i_readM)i_outputData <= memory[i_address];
           if(i_writeM)memory[i_address] <= i_data;
+       end // else: !if(!reset_n)
 
+   always @(posedge clk) begin
+      if (reset_n) begin
+          // if (count == 0) begin
           if (count == 0) begin
              if (d_readM || d_writeM) begin
                 count <= 2;
@@ -300,5 +310,13 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
 
              count <= count - 1;
           end // else: !if(count == 0)
-       end
+      end
+   end // always @ (negedge clk)
+
+   always @(negedge clk) begin
+      if (count == 0)
+        d_next_ready <= 1;
+      else
+        d_next_ready <= 0;
+   end
 endmodule

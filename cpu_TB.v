@@ -21,6 +21,8 @@ module cpu_TB();
 	wire [`WORD_SIZE-1:0] d_address;
 	wire [`WORD_SIZE-1:0] d_data;
     wire d_ready;
+    wire d_next_ready;
+    wire [`WORD_SIZE-1:0] d_written_address;
 
 	// for debuging purpose
 	wire [`WORD_SIZE-1:0] num_inst;		// number of instruction during execution
@@ -42,6 +44,8 @@ module cpu_TB();
              d_address,
              d_data,
              d_ready,
+             d_next_ready,
+             d_written_address,
              num_inst,
              num_branch,
              num_branch_miss,
@@ -58,7 +62,9 @@ module cpu_TB();
                 .d_writeM(d_writeM),
                 .d_address(d_address),
                 .d_data(d_data),
-                .d_ready(d_ready));
+                .d_ready(d_ready),
+                .d_next_ready(d_next_ready),
+                .d_written_address(d_written_address));
 
 	// initialize inputs
 	initial begin

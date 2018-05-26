@@ -53,6 +53,8 @@ module datapath
     input                      i_mem_write,
     input                      d_mem_write,
     input                      d_ready,
+    input                      d_next_ready,
+    input [WORD_SIZE-1:0]      d_written_address,
 
     // WB control signals
     input                      reg_write,
@@ -179,7 +181,7 @@ module datapath
    reg                  i_mem_read_ex, i_mem_read_mem;
    reg                  d_mem_read_ex, d_mem_read_mem;
    reg                  i_mem_write_ex, i_mem_write_mem;
-   reg                  d_mem_write_ex, d_mem_write_mem;
+   reg                  d_mem_write_ex, d_mem_write_mem, d_mem_write_wb;
    reg                  reg_write_ex, reg_write_mem, reg_write_wb;
    reg [1:0]            reg_write_src_ex, reg_write_src_mem, reg_write_src_wb;
 
@@ -235,7 +237,11 @@ module datapath
        .d_mem_read_ex(d_mem_read_ex),
        .d_mem_read_mem(d_mem_read_mem),
        .d_mem_read_wb(d_mem_read_wb),
+       .d_mem_write_mem(d_mem_write_mem),
+       .d_mem_write_wb(d_mem_write_wb),
        .d_ready(d_ready),
+       .d_next_ready(d_next_ready),
+       .d_written_address(d_written_address),
        .rt_ex(rt_ex),
        .rt_mem(rt_mem),
        .rt_wb(rt_wb),
@@ -535,9 +541,11 @@ module datapath
          rs_wb <= rs_mem;
          rt_wb <= rt_mem;
          alu_out_wb <= alu_out_mem;
+         if (!freeze_mem) begin
          MDR_wb <= d_data;
          write_reg_wb <= write_reg_mem;
          imm_signed_wb <= imm_signed_mem;
+         end
 
          //-------------------------------------------------------------------//
          // Control signal latches
@@ -572,9 +580,12 @@ module datapath
          end
 
          // MEM stage (WB)
+         d_mem_write_wb   <= bubblify_mem ? 0 : d_mem_write_mem;
          halt_wb          <= bubblify_mem ? 0 : halt_mem;
-         reg_write_wb     <= bubblify_mem ? 0 : reg_write_mem;
-         reg_write_src_wb <= bubblify_mem ? 0 : reg_write_src_mem;
+         if (!freeze_mem) begin
+            reg_write_wb     <= bubblify_mem ? 0 : reg_write_mem;
+            reg_write_src_wb <= bubblify_mem ? 0 : reg_write_src_mem;
+         end
 
          //-------------------------------------------------------------------//
          // Debug info

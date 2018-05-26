@@ -91,8 +91,8 @@ ENTRY:		LHI	$0, 0
 		LWD	$1, $2, VAR2
 		WWD	$1	; TEST #12-2 : LWD (= 0xFFFF)
 
-		SWD	$1, $2, VAR1
-		SWD	$0, $2, VAR2
+		SWD	$1, $2, VAR1        ; 6F
+		SWD	$0, $2, VAR2        ; 70
 
 		LWD	$0, $2, VAR1
 		WWD	$0	; TEST #13-1 : WWD (= 0xFFFF)
@@ -193,7 +193,7 @@ FIBRECUR:	SWD	$2, $3, 0 ; #b8
 		LWD	$1, $3, -1
 		SWD	$0, $3, -1
 		ADI	$0, $1, -1
-		JAL	FIB
+		JAL	FIB                 ; #c0
 		LWD	$1, $3, -1
 		LWD	$2, $3, -2
 		ADD	$0, $0, $1

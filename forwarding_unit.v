@@ -21,13 +21,13 @@ module forwarding_unit
 
       // rs
       if (DATA_FORWARDING && reg_write_mem && rs_ex == write_reg_mem) begin
-         rs_forward_src = `FORWARD_SRC_MEM;
+         rs_forward_src = `FORWARD_SRC_MEM; // 0
       end
       else if (DATA_FORWARDING && reg_write_wb && rs_ex == write_reg_wb) begin
-         rs_forward_src = `FORWARD_SRC_WB;
+         rs_forward_src = `FORWARD_SRC_WB; // 1
       end
       else begin
-         rs_forward_src = `FORWARD_SRC_RF;
+         rs_forward_src = `FORWARD_SRC_RF; // 2
       end
 
       // rt
