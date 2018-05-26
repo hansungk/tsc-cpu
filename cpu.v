@@ -18,7 +18,7 @@ module cpu(
     output                  d_readM, 
     output                  d_writeM, 
     output [`WORD_SIZE-1:0] d_address, 
-    inout [`WORD_SIZE-1:0]  d_data,
+    inout [4*`WORD_SIZE-1:0]  d_data,
     input                   d_readyM,
     input                   d_next_ready,
     input [`WORD_SIZE-1:0]  d_written_address,

@@ -111,22 +111,22 @@ BNE1:		HLT
 BNE2:		WWD	$0	; TEST #15-1 : BNE (= 0xFFFF)
 
 		BNE	$1, $2, BNE3 ;7e
-		HLT
-BNE3:		WWD	$1	; TEST #15-2 : BNE (= 0x0001)
+		HLT              ;7f
+BNE3:		WWD	$1	; TEST #15-2 : BNE (= 0x0001) ;80
 
-		BEQ	$1, $2, BEQ1
-		JMP	BEQ2
+		BEQ	$1, $2, BEQ1        ;81
+		JMP	BEQ2                ;82
 BEQ1:		HLT
 BEQ2:		WWD	$0	; TEST #16-1 : BEQ (= 0xFFFF)
 
-		BEQ	$2, $3, BEQ3
+		BEQ	$2, $3, BEQ3        ;85
 		HLT
-BEQ3:		WWD	$1	; TEST #16-2 : BEQ (= 0x0001)
+BEQ3:		WWD	$1	; TEST #16-2 : BEQ (= 0x0001) ;87
 
-		BGZ	$0, BGZ1
-		JMP	BGZ2
+		BGZ	$0, BGZ1            ;88
+		JMP	BGZ2                ;89
 BGZ1:		HLT
-BGZ2:		WWD	$0	; TEST #17-1 : BGZ (= 0xFFFF)
+BGZ2:		WWD	$0	; TEST #17-1 : BGZ (= 0xFFFF) ;8b
 
 		BGZ	$1, BGZ3
 		HLT

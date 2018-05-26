@@ -4,7 +4,9 @@
 `define WORD_SIZE 16	//	instead of 2^16 words to reduce memory
 			//	requirements in the Active-HDL simulator 
 
-module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_readyM, d_next_ready, d_written_address);
+module Memory
+  #(parameter READ_SIZE = 4*`WORD_SIZE)
+   (clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_readyM, d_next_ready, d_written_address);
    input clk;
    wire  clk;
    input reset_n;
@@ -29,8 +31,8 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    wire                   d_writeM;
    input [`WORD_SIZE-1:0] d_address;
    wire [`WORD_SIZE-1:0]  d_address;
-   inout [`WORD_SIZE-1:0] d_data;
-   wire [`WORD_SIZE-1:0]  d_data;
+   inout [READ_SIZE-1:0] d_data;
+   wire [READ_SIZE-1:0]  d_data;
    output                 d_readyM;
    wire                   d_readyM;
    output                 d_next_ready;
@@ -40,7 +42,7 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    
    reg [`WORD_SIZE-1:0]   memory [0:`MEMORY_SIZE-1];
    reg [`WORD_SIZE-1:0]   i_outputData;
-   reg [`WORD_SIZE-1:0]   d_outputData;
+   reg [READ_SIZE-1:0]   d_outputData;
 
    //-------------------------------------------------------------------------//
    // Latency model implementation
@@ -56,12 +58,12 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    reg                    d_readM_temp;
    reg                    d_writeM_temp;
    reg [`WORD_SIZE-1:0]   d_address_temp;
-   reg [`WORD_SIZE-1:0]   d_data_temp;
+   reg [READ_SIZE-1:0]   d_data_temp;
 
    assign d_readyM = (count == 0);
-   assign i_data = i_readM?i_outputData:`WORD_SIZE'bz;
+   assign i_data = i_readM?i_outputData:{READ_SIZE{1'bz}};
    // show read data at the last cycle
-   assign d_data = (d_readM && count == 0) ? d_outputData : `WORD_SIZE'bz;
+   assign d_data = (d_readM && count == 0) ? d_outputData : {READ_SIZE{1'bz}};
    assign d_written_address = d_address_temp;
    
    always@(posedge clk)
@@ -270,8 +272,8 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
           d_readM_temp <= 0;
           d_writeM_temp <= 0;
           d_address_temp <= 0;
-          d_data_temp <= `WORD_SIZE'bz;
-          d_outputData <= `WORD_SIZE'bz;
+          d_data_temp <= {READ_SIZE{1'bz}};
+          d_outputData <= {READ_SIZE{1'bz}};
           d_next_ready <= 1;
           count <= 0;
 	   end
@@ -286,7 +288,7 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
           // if (count == 0) begin
           if (count == 0) begin
              if (d_readM || d_writeM) begin
-                count <= 1;
+                count <= 5;
                 d_readM_temp <= d_readM;
                 d_writeM_temp <= d_writeM;
                 d_address_temp <= d_address;
@@ -302,7 +304,11 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
              // do work at the last cycle
              if (count == 1) begin
                 if (d_readM_temp) begin
-                   d_outputData <= memory[d_address_temp];
+                   d_outputData[`WORD_SIZE-1:0] <= memory[{d_address_temp[15:2], 2'b00}];
+                   d_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 1];
+                   d_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 2];
+                   d_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 3];
+                   // d_outputData <= memory[d_address_temp + 3 : d_address_temp];
                 end
                 else if (d_writeM_temp) begin
                    memory[d_address_temp] <= d_data_temp;

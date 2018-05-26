@@ -19,7 +19,7 @@ module cpu_TB();
 	wire d_readM;
 	wire d_writeM;
 	wire [`WORD_SIZE-1:0] d_address;
-	wire [`WORD_SIZE-1:0] d_data;
+	wire [4*`WORD_SIZE-1:0] d_data;
     wire d_readyM;
     wire d_next_ready;
     wire [`WORD_SIZE-1:0] d_written_address;

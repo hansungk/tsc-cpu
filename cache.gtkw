@@ -1,19 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
-[*] Sat May 26 10:54:34 2018
+[*] Sat May 26 12:38:37 2018
 [*]
 [dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
-[dumpfile_mtime] "Sat May 26 10:54:19 2018"
-[dumpfile_size] 1691231
+[dumpfile_mtime] "Sat May 26 12:36:44 2018"
+[dumpfile_size] 130279
 [savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/cache.gtkw"
-[timestart] 7810000
+[timestart] 8910000
 [size] 1440 855
 [pos] -1 -1
-*-18.166470 8689000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.166470 9233000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [sst_width] 195
-[signals_width] 355
+[signals_width] 478
 [sst_expanded] 1
 [sst_vpaned_height] 193
 @22
@@ -26,9 +26,9 @@ cpu_TB.reset_n
 @22
 cpu_TB.d_address[15:0]
 cpu_TB.NUUT.d_address_temp[15:0]
-cpu_TB.d_data[15:0]
-cpu_TB.NUUT.d_data_temp[15:0]
-cpu_TB.NUUT.d_outputData[15:0]
+cpu_TB.NUUT.d_data[63:0]
+@23
+cpu_TB.NUUT.d_data_temp[63:0]
 @28
 cpu_TB.NUUT.d_readM
 cpu_TB.NUUT.d_writeM
@@ -36,15 +36,18 @@ cpu_TB.NUUT.d_readyM
 @200
 -Cache
 @22
+cpu_TB.UUT.Cache.address[15:0]
 cpu_TB.UUT.Cache.data[15:0]
-@23
-cpu_TB.UUT.Cache.dataM[15:0]
+cpu_TB.UUT.Cache.dataM[63:0]
 @28
-cpu_TB.UUT.d_readyC
-cpu_TB.UUT.Cache.readM
+cpu_TB.UUT.Cache.index[1:0]
+cpu_TB.UUT.Cache.block[1:0]
 cpu_TB.UUT.Cache.readC
+cpu_TB.UUT.Cache.readM
+cpu_TB.UUT.Cache.readyM
+cpu_TB.UUT.Cache.readyC
 cpu_TB.UUT.Cache.writeC
-cpu_TB.UUT.Cache.miss
+cpu_TB.UUT.Cache.hit
 cpu_TB.UUT.DP.FU.rs_forward_src[1:0]
 cpu_TB.UUT.DP.FU.rt_forward_src[1:0]
 @22
