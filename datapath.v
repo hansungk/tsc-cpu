@@ -533,18 +533,19 @@ module datapath
          end
 
          // MEM stage
-         // there's no such thing as freeze_wb; if something reaches WB, it is
-         // gone for good
-         npc_wb <= npc_mem;
-         pc_wb <= pc_mem;
-         inst_type_wb <= inst_type_mem;
-         rs_wb <= rs_mem;
-         rt_wb <= rt_mem;
-         alu_out_wb <= alu_out_mem;
+         //
+         // HACK: while stalling MEM, stall WB as well to keep WB-forwarded data
+         // from changing -- see hazard_unit.v
          if (!freeze_mem) begin
-         MDR_wb <= d_data;
-         write_reg_wb <= write_reg_mem;
-         imm_signed_wb <= imm_signed_mem;
+            npc_wb <= npc_mem;
+            pc_wb <= pc_mem;
+            inst_type_wb <= inst_type_mem;
+            rs_wb <= rs_mem;
+            rt_wb <= rt_mem;
+            alu_out_wb <= alu_out_mem;
+            MDR_wb <= d_data;
+            write_reg_wb <= write_reg_mem;
+            imm_signed_wb <= imm_signed_mem;
          end
 
          //-------------------------------------------------------------------//
@@ -580,9 +581,9 @@ module datapath
          end
 
          // MEM stage (WB)
-         d_mem_write_wb   <= bubblify_mem ? 0 : d_mem_write_mem;
-         halt_wb          <= bubblify_mem ? 0 : halt_mem;
+         d_mem_write_wb   <= bubblify_mem ? 0 : d_mem_write_mem; // FIXME
          if (!freeze_mem) begin
+            halt_wb          <= bubblify_mem ? 0 : halt_mem;
             reg_write_wb     <= bubblify_mem ? 0 : reg_write_mem;
             reg_write_src_wb <= bubblify_mem ? 0 : reg_write_src_mem;
          end

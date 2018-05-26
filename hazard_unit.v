@@ -82,7 +82,11 @@ module hazard_unit
       // finished, any access to this data becomes RAW on the writeback
       // register, which is handled by forwarding (or stall condition check from
       // the ID).
-      if ((d_mem_read_mem || d_mem_write_mem) && (!d_ready || d_mem_write_wb)) begin
+      //
+      // HACK: when stalling MEM stage for memory operation, stall WB as well to
+      // prevent it from fiddling around with WB-forwarded data.  (This is not
+      // really desirable.)
+      if ((d_mem_read_mem || d_mem_write_mem) && (!d_ready /*|| d_mem_write_wb*/)) begin
          pc_write = 0;
          ir_write = 0;
          freeze_ex = 1;
