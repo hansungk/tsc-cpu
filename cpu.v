@@ -19,7 +19,7 @@ module cpu(
     output                  d_writeM, 
     output [`WORD_SIZE-1:0] d_address, 
     inout [`WORD_SIZE-1:0]  d_data,
-    input                   d_ready,
+    input                   d_readyM,
     input                   d_next_ready,
     input [`WORD_SIZE-1:0]  d_written_address,
 
@@ -70,6 +70,8 @@ module cpu(
    wire        alu_src_swap;
    wire [3:0]  alu_op;
    wire        halt_id;
+   wire        d_readyC;
+   wire [`WORD_SIZE-1:0] d_dataC; 
 
    control_unit Control (.clk (clk),
                          .reset_n (reset_n),
@@ -114,7 +116,7 @@ module cpu(
        .d_mem_read (d_mem_read),
        .i_mem_write (i_mem_write),
        .d_mem_write (d_mem_write),
-       .d_ready (d_ready),
+       .d_ready (d_readyC),
        .d_next_ready (d_next_ready),
        .d_written_address (d_written_address),
        .reg_write (reg_write),
@@ -124,11 +126,11 @@ module cpu(
        .i_address (i_address),
        .d_address (d_address),
        .i_readM (i_readM),
-       .d_readM (d_readM),
+       .d_readC (d_readC),
        .i_writeM (i_writeM),
-       .d_writeM (d_writeM),
+       .d_writeC (d_writeC),
        .i_data (i_data),
-       .d_data (d_data),
+       .d_data (d_dataC),
        .output_port (output_port),
        .opcode(opcode),
        .func_code (func_code),
@@ -138,4 +140,18 @@ module cpu(
        .num_branch (num_branch),
        .num_branch_miss (num_branch_miss)
        );
+
+   cache #(.WORD_SIZE(`WORD_SIZE))
+   Cache (.clk(clk),
+          .reset_n(reset_n),
+          .readC(d_readC),
+          .writeC(d_writeC),
+          .address(d_address),
+          .data(d_dataC),
+          .dataM(d_data),
+          .readM(d_readM),
+          .writeM(d_writeM),
+          .readyM(d_readyM),
+          .readyC(d_readyC)
+          );
 endmodule

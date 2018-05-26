@@ -4,7 +4,7 @@
 `define WORD_SIZE 16	//	instead of 2^16 words to reduce memory
 			//	requirements in the Active-HDL simulator 
 
-module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_ready, d_next_ready, d_written_address);
+module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_readyM, d_next_ready, d_written_address);
    input clk;
    wire  clk;
    input reset_n;
@@ -31,8 +31,8 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    wire [`WORD_SIZE-1:0]  d_address;
    inout [`WORD_SIZE-1:0] d_data;
    wire [`WORD_SIZE-1:0]  d_data;
-   output                 d_ready;
-   wire                   d_ready;
+   output                 d_readyM;
+   wire                   d_readyM;
    output                 d_next_ready;
    reg                    d_next_ready;
    output [`WORD_SIZE-1:0] d_written_address;
@@ -58,7 +58,7 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    reg [`WORD_SIZE-1:0]   d_address_temp;
    reg [`WORD_SIZE-1:0]   d_data_temp;
 
-   assign d_ready = (count == 0);
+   assign d_readyM = (count == 0);
    assign i_data = i_readM?i_outputData:`WORD_SIZE'bz;
    // show read data at the last cycle
    assign d_data = (d_readM && count == 0) ? d_outputData : `WORD_SIZE'bz;
@@ -271,6 +271,7 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
           d_writeM_temp <= 0;
           d_address_temp <= 0;
           d_data_temp <= `WORD_SIZE'bz;
+          d_outputData <= `WORD_SIZE'bz;
           d_next_ready <= 1;
           count <= 0;
 	   end
@@ -285,7 +286,7 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
           // if (count == 0) begin
           if (count == 0) begin
              if (d_readM || d_writeM) begin
-                count <= 2;
+                count <= 1;
                 d_readM_temp <= d_readM;
                 d_writeM_temp <= d_writeM;
                 d_address_temp <= d_address;

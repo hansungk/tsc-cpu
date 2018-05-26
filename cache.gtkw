@@ -1,18 +1,17 @@
 [*]
 [*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
-[*] Sat May 26 01:23:46 2018
+[*] Sat May 26 10:54:34 2018
 [*]
 [dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
-[dumpfile_mtime] "Sat May 26 01:08:50 2018"
-[dumpfile_size] 115768
+[dumpfile_mtime] "Sat May 26 10:54:19 2018"
+[dumpfile_size] 1691231
 [savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/cache.gtkw"
-[timestart] 6911000
+[timestart] 7810000
 [size] 1440 855
 [pos] -1 -1
-*-18.166470 7855000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.166470 8689000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
-[treeopen] cpu_TB.UUT.DP.
 [sst_width] 195
 [signals_width] 355
 [sst_expanded] 1
@@ -29,15 +28,25 @@ cpu_TB.d_address[15:0]
 cpu_TB.NUUT.d_address_temp[15:0]
 cpu_TB.d_data[15:0]
 cpu_TB.NUUT.d_data_temp[15:0]
+cpu_TB.NUUT.d_outputData[15:0]
 @28
-cpu_TB.d_readM
-cpu_TB.NUUT.d_readM_temp
-cpu_TB.d_writeM
-cpu_TB.NUUT.d_writeM_temp
-cpu_TB.NUUT.count[1:0]
-cpu_TB.NUUT.d_ready
-@29
-cpu_TB.NUUT.d_next_ready
+cpu_TB.NUUT.d_readM
+cpu_TB.NUUT.d_writeM
+cpu_TB.NUUT.d_readyM
+@200
+-Cache
+@22
+cpu_TB.UUT.Cache.data[15:0]
+@23
+cpu_TB.UUT.Cache.dataM[15:0]
+@28
+cpu_TB.UUT.d_readyC
+cpu_TB.UUT.Cache.readM
+cpu_TB.UUT.Cache.readC
+cpu_TB.UUT.Cache.writeC
+cpu_TB.UUT.Cache.miss
+cpu_TB.UUT.DP.FU.rs_forward_src[1:0]
+cpu_TB.UUT.DP.FU.rt_forward_src[1:0]
 @22
 cpu_TB.i[15:0]
 cpu_TB.i_address[15:0]
@@ -125,12 +134,14 @@ cpu_TB.UUT.DP.BPRED.npc[15:0]
 @200
 -EX
 @22
+cpu_TB.UUT.DP.pc_ex[15:0]
 cpu_TB.UUT.DP.npc_ex[15:0]
 cpu_TB.UUT.DP.resolved_pc[15:0]
 cpu_TB.UUT.DP.resolved_pc[15:0]
 cpu_TB.UUT.DP.alu_operand_1[15:0]
 cpu_TB.UUT.DP.alu_operand_2[15:0]
 cpu_TB.UUT.DP.alu_result[15:0]
+cpu_TB.UUT.DP.a_ex[15:0]
 cpu_TB.UUT.DP.b_ex[15:0]
 @28
 cpu_TB.UUT.DP.write_reg_ex[1:0]
@@ -139,6 +150,7 @@ cpu_TB.UUT.DP.rt_forward_src[1:0]
 @200
 -MEM
 @22
+cpu_TB.UUT.DP.pc_mem[15:0]
 cpu_TB.UUT.DP.alu_out_mem[15:0]
 @28
 cpu_TB.UUT.DP.d_mem_write_mem
@@ -151,6 +163,7 @@ cpu_TB.UUT.DP.write_reg_mem[1:0]
 -WB
 @28
 cpu_TB.UUT.DP.reg_write_wb
+cpu_TB.UUT.DP.reg_write_src_wb[1:0]
 cpu_TB.UUT.DP.write_reg_wb[1:0]
 @22
 cpu_TB.UUT.DP.writeData[15:0]

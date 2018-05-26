@@ -20,7 +20,7 @@ module cpu_TB();
 	wire d_writeM;
 	wire [`WORD_SIZE-1:0] d_address;
 	wire [`WORD_SIZE-1:0] d_data;
-    wire d_ready;
+    wire d_readyM;
     wire d_next_ready;
     wire [`WORD_SIZE-1:0] d_written_address;
 
@@ -43,7 +43,7 @@ module cpu_TB();
              d_writeM,
              d_address,
              d_data,
-             d_ready,
+             d_readyM,
              d_next_ready,
              d_written_address,
              num_inst,
@@ -62,7 +62,7 @@ module cpu_TB();
                 .d_writeM(d_writeM),
                 .d_address(d_address),
                 .d_data(d_data),
-                .d_ready(d_ready),
+                .d_readyM(d_readyM),
                 .d_next_ready(d_next_ready),
                 .d_written_address(d_written_address));
 
