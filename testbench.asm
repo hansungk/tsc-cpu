@@ -86,29 +86,29 @@ ENTRY:		LHI	$0, 0
 		SHR	$3, $2
 		WWD	$3	; TEST #11-3 : SHR (= 0x0000)
 
-		LWD	$0, $2, VAR1
+		LWD	$0, $2, VAR1        ; 6b
 		WWD	$0	; TEST #12-1 : LWD (= 0x0001)
-		LWD	$1, $2, VAR2
+		LWD	$1, $2, VAR2        ; 6d
 		WWD	$1	; TEST #12-2 : LWD (= 0xFFFF)
 
 		SWD	$1, $2, VAR1        ; 6F
 		SWD	$0, $2, VAR2        ; 70
 
-		LWD	$0, $2, VAR1
+		LWD	$0, $2, VAR1        ; 71
 		WWD	$0	; TEST #13-1 : WWD (= 0xFFFF)
-		LWD	$1, $2, VAR2
-		WWD	$1	; TEST #13-2 : WWD (= 0x0001)
+		LWD	$1, $2, VAR2        ; 73
+		WWD	$1	; TEST #13-2 : WWD (= 0x0001) ;74
 
 		JMP	JMP0
-JMP0:		WWD	$0	; TEST #14-1 : JMP (= 0xFFFF)
+JMP0:		WWD	$0	; TEST #14-1 : JMP (= 0xFFFF) ;76
 		JMP	JMP1
 		HLT
-JMP1:		WWD	$1	; TEST #14-2 : JMP (= 0x0001)
+JMP1:		WWD	$1	; TEST #14-2 : JMP (= 0x0001) ;79
 
 		BNE	$2, $3, BNE1 ;7a
 		JMP	BNE2
 BNE1:		HLT
-BNE2:		WWD	$0	; TEST #15-1 : BNE (= 0xFFFF)
+BNE2:		WWD	$0	; TEST #15-1 : BNE (= 0xFFFF) ;7d
 
 		BNE	$1, $2, BNE3 ;7e
 		HLT              ;7f
@@ -117,7 +117,7 @@ BNE3:		WWD	$1	; TEST #15-2 : BNE (= 0x0001) ;80
 		BEQ	$1, $2, BEQ1        ;81
 		JMP	BEQ2                ;82
 BEQ1:		HLT
-BEQ2:		WWD	$0	; TEST #16-1 : BEQ (= 0xFFFF)
+BEQ2:		WWD	$0	; TEST #16-1 : BEQ (= 0xFFFF) ;84
 
 		BEQ	$2, $3, BEQ3        ;85
 		HLT
@@ -186,7 +186,7 @@ FIB:		ADI	$1, $0, -1 ; #b2
 		JPR	$2	; #b6
 		HLT
 FIBRECUR:	SWD	$2, $3, 0 ; #b8
-		SWD	$0, $3, 1		
+		SWD	$0, $3, 1
 		ADI	$3, $3, 2
 		ADI	$0, $0, -2
 		JAL	FIB	; #bc

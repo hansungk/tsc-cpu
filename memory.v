@@ -6,7 +6,7 @@
 
 module Memory
   #(parameter READ_SIZE = 4*`WORD_SIZE)
-   (clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_readyM, d_next_ready, d_written_address);
+   (clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_readyM, d_input_readyM, d_doneM, d_written_address);
    input clk;
    wire  clk;
    input reset_n;
@@ -35,6 +35,10 @@ module Memory
    wire [READ_SIZE-1:0]  d_data;
    output                 d_readyM;
    wire                   d_readyM;
+   output                 d_input_readyM;
+   reg                    d_input_readyM;
+   output                 d_doneM;
+   reg                    d_doneM;
    output                 d_next_ready;
    reg                    d_next_ready;
    output [`WORD_SIZE-1:0] d_written_address;
@@ -60,10 +64,11 @@ module Memory
    reg [`WORD_SIZE-1:0]   d_address_temp;
    reg [READ_SIZE-1:0]   d_data_temp;
 
-   assign d_readyM = (count == 0);
+   assign d_readyM = /*!(d_readM || d_writeM) && */(count == 0);
    assign i_data = i_readM?i_outputData:{READ_SIZE{1'bz}};
    // show read data at the last cycle
-   assign d_data = (d_readM && count == 0) ? d_outputData : {READ_SIZE{1'bz}};
+   // assign d_data = (d_readM && count == 0) ? d_outputData : {READ_SIZE{1'bz}};
+   assign d_data = (d_input_readyM) ? d_outputData : {READ_SIZE{1'bz}};
    assign d_written_address = d_address_temp;
    
    always@(posedge clk)
@@ -274,6 +279,8 @@ module Memory
           d_address_temp <= 0;
           d_data_temp <= {READ_SIZE{1'bz}};
           d_outputData <= {READ_SIZE{1'bz}};
+          d_input_readyM <= 0;
+          d_doneM <= 0;
           d_next_ready <= 1;
           count <= 0;
 	   end
@@ -283,12 +290,22 @@ module Memory
           if(i_writeM)memory[i_address] <= i_data;
        end // else: !if(!reset_n)
 
-   always @(posedge clk) begin
+   always @(negedge clk) begin
       if (reset_n) begin
+         if (count == 1) begin
+            d_doneM <= 1;
+            if (d_readM_temp)
+              d_input_readyM <= 1;
+         end
+         else begin
+            d_doneM <= 0;
+            d_input_readyM <= 0;
+         end
+         
           // if (count == 0) begin
           if (count == 0) begin
              if (d_readM || d_writeM) begin
-                count <= 5;
+                count <= 4;
                 d_readM_temp <= d_readM;
                 d_writeM_temp <= d_writeM;
                 d_address_temp <= d_address;
@@ -311,9 +328,12 @@ module Memory
                    // d_outputData <= memory[d_address_temp + 3 : d_address_temp];
                 end
                 else if (d_writeM_temp) begin
-                   memory[d_address_temp] <= d_data_temp;
+                   memory[{d_address_temp[15:2], 2'b00}] <= d_data_temp[`WORD_SIZE-1:0];
+                   memory[{d_address_temp[15:2], 2'b00} + 1] <= d_data_temp[2*`WORD_SIZE-1:`WORD_SIZE];
+                   memory[{d_address_temp[15:2], 2'b00} + 2] <= d_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
+                   memory[{d_address_temp[15:2], 2'b00} + 3] <= d_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
                 end
-             end
+             end // if (count == 1)
 
              count <= count - 1;
           end // else: !if(count == 0)

@@ -5,29 +5,31 @@
 `include "opcodes.v"
 
 module cpu(
-    input                   clk, 
-    input                   reset_n,
+    input                    clk, 
+    input                    reset_n,
 
     // Instruction memory interface
-    output                  i_readM, 
-    output                  i_writeM, 
-    output [`WORD_SIZE-1:0] i_address, 
-    inout [`WORD_SIZE-1:0]  i_data, 
+    output                   i_readM, 
+    output                   i_writeM, 
+    output [`WORD_SIZE-1:0]  i_address, 
+    inout [`WORD_SIZE-1:0]   i_data, 
 
     // Data memory interface
-    output                  d_readM, 
-    output                  d_writeM, 
-    output [`WORD_SIZE-1:0] d_address, 
-    inout [4*`WORD_SIZE-1:0]  d_data,
-    input                   d_readyM,
-    input                   d_next_ready,
-    input [`WORD_SIZE-1:0]  d_written_address,
+    output                   d_readM, 
+    output                   d_writeM, 
+    output [`WORD_SIZE-1:0]  d_address, 
+    inout [4*`WORD_SIZE-1:0] d_data,
+    input                    d_readyM,
+    input                    d_input_readyM,
+    input                    d_doneM,
+    input                    d_next_ready,
+    input [`WORD_SIZE-1:0]   d_written_address,
 
-    output [`WORD_SIZE-1:0] num_inst, 
-    output [`WORD_SIZE-1:0] num_branch, 
-    output [`WORD_SIZE-1:0] num_branch_miss, 
-    output [`WORD_SIZE-1:0] output_port, 
-    output                  is_halted
+    output [`WORD_SIZE-1:0]  num_inst, 
+    output [`WORD_SIZE-1:0]  num_branch, 
+    output [`WORD_SIZE-1:0]  num_branch_miss, 
+    output [`WORD_SIZE-1:0]  output_port, 
+    output                   is_halted
 );
    //===-------------------------------------------------------------------===//
    // CPU feature configurations
@@ -146,12 +148,14 @@ module cpu(
           .reset_n(reset_n),
           .readC(d_readC),
           .writeC(d_writeC),
+          .readyM(d_readyM),
+          .input_readyM(d_input_readyM),
+          .doneM(d_doneM),
           .address(d_address),
           .data(d_dataC),
           .dataM(d_data),
           .readM(d_readM),
           .writeM(d_writeM),
-          .readyM(d_readyM),
           .readyC(d_readyC)
           );
 endmodule

@@ -21,6 +21,8 @@ module cpu_TB();
 	wire [`WORD_SIZE-1:0] d_address;
 	wire [4*`WORD_SIZE-1:0] d_data;
     wire d_readyM;
+    wire d_input_readyM;
+    wire d_doneM;
     wire d_next_ready;
     wire [`WORD_SIZE-1:0] d_written_address;
 
@@ -44,6 +46,8 @@ module cpu_TB();
              d_address,
              d_data,
              d_readyM,
+             d_input_readyM,
+             d_doneM,
              d_next_ready,
              d_written_address,
              num_inst,
@@ -63,7 +67,8 @@ module cpu_TB();
                 .d_address(d_address),
                 .d_data(d_data),
                 .d_readyM(d_readyM),
-                .d_next_ready(d_next_ready),
+                .d_input_readyM(d_input_readyM),
+                .d_doneM(d_doneM),
                 .d_written_address(d_written_address));
 
 	// initialize inputs
