@@ -50,7 +50,7 @@ module Memory(clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_rea
    // Blocking opeartions; only supports one operation at a time.
 
    // Mimic latency using a simple counter.
-   reg [1:0]              count;
+   reg [2:0]              count;
 
    // Hold input signals to unchange while busy.
    reg                    d_readM_temp;

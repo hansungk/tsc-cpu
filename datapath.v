@@ -387,8 +387,10 @@ module datapath
       // Cancel all this if this EX stage was stalled.
       // Prevents BHT continually increasing/decreasing when the pipeline
       // stalled while handling a branch.
-      if (freeze_ex)
-        update_bht = 0;
+      if (freeze_ex) begin
+         update_bht = 0;
+         incr_num_branch = 0;
+      end
    end
 
    // MEM stage
