@@ -5,7 +5,8 @@
 			//	requirements in the Active-HDL simulator 
 
 module Memory
-  #(parameter READ_SIZE = 4*`WORD_SIZE)
+  #(parameter READ_SIZE = 4*`WORD_SIZE,
+    parameter CACHE = 1)
    (clk, reset_n, i_readM, i_writeM, i_address, i_data, i_readyM, i_input_readyM, d_readM, d_writeM, d_address, d_data, d_readyM, d_input_readyM, d_doneM, d_written_address);
    input clk;
    wire  clk;
@@ -55,6 +56,9 @@ module Memory
    // 1-word read takes 2 cycles.
    // Blocking opeartions; only supports one operation at a time.
 
+   wire [2:0]            LATENCY;
+   assign LATENCY = CACHE ? 6 : 2;
+            
    // Mimic latency using a simple counter.
    reg [2:0]              i_count;
    reg [2:0]              d_count;
@@ -300,7 +304,7 @@ module Memory
           d_count <= 0;
 	   end // if (!reset_n)
 
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if (reset_n) begin
          if (i_count == 1) begin
             if (i_readM_temp)
@@ -312,7 +316,7 @@ module Memory
          
           if (i_count == 0) begin
              if (i_readM || i_writeM) begin
-                i_count <= 4;
+                i_count <= LATENCY - 1;
                 i_readM_temp <= i_readM;
                 i_writeM_temp <= i_writeM;
                 i_address_temp <= i_address;
@@ -328,16 +332,24 @@ module Memory
              // do work at the last cycle
              if (i_count == 1) begin
                 if (i_readM_temp) begin
-                   i_outputData[`WORD_SIZE-1:0] <= memory[{i_address_temp[15:2], 2'b00}];
-                   i_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 1];
-                   i_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 2];
-                   i_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 3];
+                   if (CACHE) begin
+                      i_outputData[`WORD_SIZE-1:0] <= memory[{i_address_temp[15:2], 2'b00}];
+                      i_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 1];
+                      i_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 2];
+                      i_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 3];
+                   end
+                   else
+                     i_outputData <= memory[i_address_temp];
                 end
                 else if (i_writeM_temp) begin
-                   memory[{i_address_temp[15:2], 2'b00}] <= i_data_temp[`WORD_SIZE-1:0];
-                   memory[{i_address_temp[15:2], 2'b00} + 1] <= i_data_temp[2*`WORD_SIZE-1:`WORD_SIZE];
-                   memory[{i_address_temp[15:2], 2'b00} + 2] <= i_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
-                   memory[{i_address_temp[15:2], 2'b00} + 3] <= i_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
+                   if (CACHE) begin
+                      memory[{i_address_temp[15:2], 2'b00}] <= i_data_temp[`WORD_SIZE-1:0];
+                      memory[{i_address_temp[15:2], 2'b00} + 1] <= i_data_temp[2*`WORD_SIZE-1:`WORD_SIZE];
+                      memory[{i_address_temp[15:2], 2'b00} + 2] <= i_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
+                      memory[{i_address_temp[15:2], 2'b00} + 3] <= i_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
+                   end
+                   else
+                     memory[i_address_temp] <= i_data_temp;
                 end
              end
 
@@ -346,7 +358,7 @@ module Memory
       end
    end
 
-   always @(negedge clk) begin
+   always @(posedge clk) begin
       if (reset_n) begin
          if (d_count == 1) begin
             d_doneM <= 1;
@@ -360,7 +372,7 @@ module Memory
          
           if (d_count == 0) begin
              if (d_readM || d_writeM) begin
-                d_count <= 4;
+                d_count <= LATENCY - 1;
                 d_readM_temp <= d_readM;
                 d_writeM_temp <= d_writeM;
                 d_address_temp <= d_address;
@@ -376,16 +388,24 @@ module Memory
              // do work at the last cycle
              if (d_count == 1) begin
                 if (d_readM_temp) begin
-                   d_outputData[`WORD_SIZE-1:0] <= memory[{d_address_temp[15:2], 2'b00}];
-                   d_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 1];
-                   d_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 2];
-                   d_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 3];
+                   if (CACHE) begin
+                      d_outputData[`WORD_SIZE-1:0] <= memory[{d_address_temp[15:2], 2'b00}];
+                      d_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 1];
+                      d_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 2];
+                      d_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 3];
+                   end
+                   else
+                     d_outputData <= memory[d_address_temp];
                 end
                 else if (d_writeM_temp) begin
-                   memory[{d_address_temp[15:2], 2'b00}] <= d_data_temp[`WORD_SIZE-1:0];
-                   memory[{d_address_temp[15:2], 2'b00} + 1] <= d_data_temp[2*`WORD_SIZE-1:`WORD_SIZE];
-                   memory[{d_address_temp[15:2], 2'b00} + 2] <= d_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
-                   memory[{d_address_temp[15:2], 2'b00} + 3] <= d_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
+                   if (CACHE) begin
+                      memory[{d_address_temp[15:2], 2'b00}] <= d_data_temp[`WORD_SIZE-1:0];
+                      memory[{d_address_temp[15:2], 2'b00} + 1] <= d_data_temp[2*`WORD_SIZE-1:`WORD_SIZE];
+                      memory[{d_address_temp[15:2], 2'b00} + 2] <= d_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
+                      memory[{d_address_temp[15:2], 2'b00} + 3] <= d_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
+                   end
+                   else
+                     memory[d_address_temp] <= d_data_temp;
                 end
              end
 

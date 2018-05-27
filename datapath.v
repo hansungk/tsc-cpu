@@ -65,10 +65,10 @@ module datapath
     input                      input_ready,
     output [WORD_SIZE-1:0]     i_address,
     output [WORD_SIZE-1:0]     d_address,
-    output                     i_readC,
-    output                     d_readC,
-    output                     i_writeC,
-    output                     d_writeC,
+    output                     i_read,
+    output                     d_read,
+    output                     i_write,
+    output                     d_write,
     inout [WORD_SIZE-1:0]      i_data,
     inout [WORD_SIZE-1:0]      d_data,
     output reg [WORD_SIZE-1:0] output_port,
@@ -299,8 +299,8 @@ module datapath
    assign npc = (BRANCH_PREDICTOR == `BPRED_NONE || BRANCH_PREDICTOR == `BPRED_ALWAYS_UNTAKEN) ?
                 pc + 1 : npc_pred;
    assign i_address = pc;
-   assign i_readC = i_mem_read;
-   assign i_writeC = 0; // no instruction write
+   assign i_read = i_mem_read;
+   assign i_write = 0; // no instruction write
 
    // ID stage
    assign opcode = ir[15:12];
@@ -405,8 +405,8 @@ module datapath
    end
 
    // MEM stage
-   assign d_readC = d_mem_read_mem;
-   assign d_writeC = d_mem_write_mem;
+   assign d_read = d_mem_read_mem;
+   assign d_write = d_mem_write_mem;
    assign d_address = alu_out_mem;
    assign d_data = d_mem_write_mem ? b_mem : {WORD_SIZE{1'bz}};
 

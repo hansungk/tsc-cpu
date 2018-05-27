@@ -64,7 +64,7 @@ module cache
    // Mark operation finish.
    //
    // Cache read finishes when the block is read in and exhibits a cache hit.
-   // Cache write finishes when the final writeM is finishes.
+   // Cache write finishes when the final writeM finishes.
    assign readyC = (readC && hit) || (writeC && (doneM && !input_readyM));
 
    integer i;
@@ -97,12 +97,11 @@ module cache
       end
       else begin
          // readC and writeC is guaranteed by the datapath to remain asserted
-         // until each operation finishes, so it is safe to do continuous if
-         // check on them.
+         // during an entire operation, so it is safe to do if check on them
+         // without early-exiting.
          if (readC) begin
             // Read miss: read block into the cache.
-            // input_readyM only asserts for read miss (controlled by readM).
-            if (/*!hit && */input_readyM) begin
+            if (!hit && input_readyM) begin
                // If a read is issued and it is a miss, issue memory read
                tag_bank[index] <= tag;
                data_bank[index] <= dataM;
@@ -117,8 +116,9 @@ module cache
                data_bank[index] <= dataM;
                valid[index] <= 1;
             end
-            // Write miss: wait until the container block reads, latch the block
-            // into a temporary register, and issue memory write with that data
+            // Write miss: wait until the container block is read, latch the
+            // read block into a temporary register, write to it, and write
+            // through to memory.
             if (!hit && input_readyM) begin
                temp_block <= dataM;
                block_ready <= 1;

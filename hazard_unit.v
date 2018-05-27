@@ -159,18 +159,11 @@ module hazard_unit
         i_mem_read = 0;
 
       if (ir_write && !i_ready) begin
-         // if (i_mem_read)
          pc_write = 0;
          if (jump_miss || branch_miss)
            pc_write = 1;
-         // ir_write = 0;
          flush_if = 1;
-         // bubblify_id = 1;
       end
-
-      // if (!pc_write && branch_miss) begin
-      //    // free
-      // end
 
       // don't increase num_inst in any kind of hazard
       incr_num_inst = !(bubblify_id || bubblify_mem || !pc_write || flush_if);
