@@ -5,22 +5,23 @@ module cache
   #(parameter WORD_SIZE = `WORD_SIZE,
     parameter READ_SIZE = 4*`WORD_SIZE)
    (input                  clk,
-    input                 reset_n,
-    input                 readC,
-    input                 writeC,
-    input                 readyM,
-    input                 input_readyM,
-    input                 doneM,
-    input [WORD_SIZE-1:0] address,
-    inout [WORD_SIZE-1:0] data, // data bus to the processor
-    inout [READ_SIZE-1:0] dataM, // data bus to the memory
+    input                      reset_n,
+    input                      readC,
+    input                      writeC,
+    input                      readyM,
+    input                      input_readyM,
+    input                      doneM,
+    input [WORD_SIZE-1:0]      address,
+    inout [WORD_SIZE-1:0]      data, // data bus to the processor
+    inout [READ_SIZE-1:0]      dataM, // data bus to the memory
     // issue memory access for cache misses
-    output reg            readM,
-    output reg            writeM,
-    output                readyC,
-    output reg            miss,
-    output [1:0]          index,
-    output [1:0]          block);
+    output reg                 readM,
+    output reg                 writeM,
+    output                     readyC,
+    output reg [WORD_SIZE-1:0] num_miss,
+    output reg [WORD_SIZE-1:0] num_access,
+    output [1:0]               index,
+    output [1:0]               block);
 
    // State register
    // needs reset
@@ -60,16 +61,25 @@ module cache
                   (writeC && block_ready) ? (temp_block & mask) | (data << (block * WORD_SIZE)) :
                   {READ_SIZE{1'bz}};
 
-   assign readyC = (readC && hit) || (writeC && !input_readyM && doneM);
+   // Mark operation finish.
+   //
+   // Cache read finishes when the block is read in and exhibits a cache hit.
+   // Cache write finishes when the final writeM is finishes.
+   assign readyC = (readC && hit) || (writeC && (doneM && !input_readyM));
 
    integer i;
 
    always @(*) begin
-      miss = !hit;
       // Should access memory on both read miss and write miss, because write
       // needs whole cache block to be loaded.
-      readM = (readC && !hit && !input_readyM) || (writeC && !hit && !block_ready && !input_readyM);
-      writeM = writeC && hit && !doneM || writeC && block_ready && !doneM;
+
+      // Memory read: when it's a read miss, or when it's a write miss and the
+      // container block is not loaded yet.
+      readM = ((readC && !hit) || (writeC && !hit && !block_ready)) && !input_readyM;
+
+      // Memory write: when it's a write hit, or when it's a write miss but the
+      // container block is loaded by former readM.
+      writeM = writeC && (hit || block_ready) && !doneM;
    end
 
    always @(posedge clk) begin
@@ -81,6 +91,8 @@ module cache
             dirty[i] <= 0;
             temp_block <= 0;
             block_ready <= 0;
+            num_miss <= 0;
+            num_access <= 0;
          end
       end
       else begin
@@ -88,29 +100,36 @@ module cache
          // until each operation finishes, so it is safe to do continuous if
          // check on them.
          if (readC) begin
-            // Update cache on read miss
-            if (/*readM && */input_readyM) begin
+            // Read miss: read block into the cache.
+            // input_readyM only asserts for read miss (controlled by readM).
+            if (/*!hit && */input_readyM) begin
                // If a read is issued and it is a miss, issue memory read
                tag_bank[index] <= tag;
                data_bank[index] <= dataM;
                valid[index] <= 1;
+               num_miss <= num_miss + 1;
             end
          end
          if (writeC) begin
-            if (!hit && input_readyM) begin
-               // readM <= 0;
-               temp_block <= dataM;
-               block_ready <= 1;
-            end
+            // Write hit: update both cache and memory (memory handled above)
             if (hit) begin
                tag_bank[index] <= tag;
                data_bank[index] <= dataM;
                valid[index] <= 1;
             end
-         end // if (writeC)
-         // Every time an operation ends, reset block_ready
+            // Write miss: wait until the container block reads, latch the block
+            // into a temporary register, and issue memory write with that data
+            if (!hit && input_readyM) begin
+               temp_block <= dataM;
+               block_ready <= 1;
+               num_miss <= num_miss + 1;
+            end
+         end
+
+         // Every time an operation ends, reset block_ready and increment num_access.
          if (readyC) begin
             block_ready <= 0;
+            num_access <= num_access + 1;
          end
       end
    end

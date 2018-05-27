@@ -1,22 +1,22 @@
 [*]
 [*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
-[*] Sat May 26 13:23:27 2018
+[*] Sat May 26 19:44:25 2018
 [*]
 [dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
-[dumpfile_mtime] "Sat May 26 12:59:18 2018"
-[dumpfile_size] 443970
+[dumpfile_mtime] "Sat May 26 19:43:33 2018"
+[dumpfile_size] 362770
 [savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/cache.gtkw"
-[timestart] 17590000
+[timestart] 46036000
 [size] 1440 855
 [pos] -1 -1
-*-18.166470 17800000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.725235 47236000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
-[sst_width] 195
-[signals_width] 478
+[sst_width] 224
+[signals_width] 453
 [sst_expanded] 1
-[sst_vpaned_height] 193
+[sst_vpaned_height] 418
 @22
 cpu_TB.Passed[15:0]
 @28
@@ -25,6 +25,9 @@ cpu_TB.reset_n
 @200
 -Memory
 @22
+cpu_TB.NUUT.i_address[15:0]
+cpu_TB.NUUT.i_address_temp[15:0]
+cpu_TB.NUUT.i_data[63:0]
 cpu_TB.d_address[15:0]
 cpu_TB.NUUT.d_address_temp[15:0]
 cpu_TB.NUUT.d_data[63:0]
@@ -32,34 +35,34 @@ cpu_TB.NUUT.d_data_temp[63:0]
 @28
 cpu_TB.NUUT.d_readM
 cpu_TB.NUUT.d_writeM
+cpu_TB.NUUT.d_writeM_temp
 cpu_TB.NUUT.d_readyM
+cpu_TB.NUUT.d_input_readyM
+cpu_TB.NUUT.i_readM
 @200
--Cache
+-ICache
 @22
-cpu_TB.UUT.Cache.address[15:0]
-cpu_TB.UUT.Cache.data[15:0]
-cpu_TB.UUT.Cache.dataM[63:0]
+cpu_TB.UUT.ICache.address[15:0]
 @28
-cpu_TB.UUT.Cache.index[1:0]
-cpu_TB.UUT.Cache.block[1:0]
-cpu_TB.UUT.Cache.readC
-cpu_TB.UUT.Cache.readM
-cpu_TB.UUT.Cache.writeC
-@29
-cpu_TB.UUT.Cache.writeM
-@28
-cpu_TB.UUT.Cache.readyC
-cpu_TB.UUT.Cache.readyM
-cpu_TB.UUT.Cache.hit
-cpu_TB.UUT.DP.FU.rs_forward_src[1:0]
-cpu_TB.UUT.DP.FU.rt_forward_src[1:0]
+cpu_TB.UUT.ICache.index[1:0]
+cpu_TB.UUT.ICache.block[1:0]
 @22
-cpu_TB.i[15:0]
+cpu_TB.UUT.ICache.data[15:0]
+cpu_TB.UUT.ICache.dataM[63:0]
+@28
+cpu_TB.UUT.ICache.readC
+cpu_TB.UUT.ICache.readM
+cpu_TB.UUT.ICache.input_readyM
+cpu_TB.UUT.ICache.hit
+cpu_TB.UUT.ICache.readyC
+@200
+-DCache
+@28
+cpu_TB.UUT.DCache.readC
+cpu_TB.UUT.DCache.readM
+@22
 cpu_TB.i_address[15:0]
-cpu_TB.i_data[15:0]
 @28
-cpu_TB.i_readM
-cpu_TB.i_writeM
 cpu_TB.is_halted
 @22
 cpu_TB.num_clock[15:0]
@@ -71,10 +74,12 @@ cpu_TB.output_port[15:0]
 @28
 cpu_TB.testbench_finish
 @22
+cpu_TB.UUT.DP.num_inst_if[15:0]
 cpu_TB.UUT.DP.pc[15:0]
 cpu_TB.UUT.DP.npc[15:0]
 @28
 cpu_TB.UUT.DP.pc_write
+cpu_TB.UUT.DP.flush_if
 @200
 -ID
 @22
@@ -115,6 +120,8 @@ cpu_TB.UUT.DP.data1[15:0]
 cpu_TB.UUT.DP.data2[15:0]
 @28
 cpu_TB.UUT.DP.jump_miss
+@29
+cpu_TB.UUT.DP.cond_branch_miss
 @22
 cpu_TB.UUT.DP.jump_target[15:0]
 @28
@@ -170,6 +177,10 @@ cpu_TB.UUT.DP.write_reg_mem[1:0]
 -WB
 @28
 cpu_TB.UUT.DP.reg_write_wb
+@22
+cpu_TB.UUT.DP.MDR_wb[15:0]
+cpu_TB.UUT.DP.alu_out_wb[15:0]
+@28
 cpu_TB.UUT.DP.reg_write_src_wb[1:0]
 cpu_TB.UUT.DP.write_reg_wb[1:0]
 @22

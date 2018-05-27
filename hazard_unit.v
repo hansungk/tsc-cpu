@@ -6,7 +6,8 @@
 module hazard_unit
   #(parameter RF_SELF_FORWARDING = 1,
     parameter DATA_FORWARDING = 1)
-   (
+   (input                  clk,
+    input                  reset_n,
     input [3:0]            opcode,
     input [2:0]            inst_type,
     input [5:0]            func_code,
@@ -25,13 +26,16 @@ module hazard_unit
     input                  d_mem_read_wb,
     input                  d_mem_write_mem,
     input                  d_mem_write_wb,
+    input                  i_ready,
+    input                  i_readyM,
     input                  d_ready,
-    input                  d_next_ready,
     input [`WORD_SIZE-1:0] d_written_address,
     input [1:0]            rt_ex, 
     input [1:0]            rt_mem,
-    input [1:0]            rt_wb, 
+    input [1:0]            rt_wb,
+    output reg             i_mem_read,
     output reg             bubblify_id, // reset all control signals of ID to zero
+    output reg             bubblify_ex, // reset all control signals of EX to zero
     output reg             bubblify_mem, // reset all control signals of MEM to zero
     output reg             flush_if, // reset IR to nop
     output reg             pc_write,
@@ -49,6 +53,7 @@ module hazard_unit
       freeze_ex = 0;
       freeze_mem = 0;
       bubblify_id = 0;
+      bubblify_ex = 0;
       bubblify_mem = 0;
       flush_if = 0;
 
@@ -143,7 +148,49 @@ module hazard_unit
          end
       end
 
+      // IF stall.
+      //
+      // This happens because of the I-Cache miss.
+      i_mem_read = 1;
+      // if (i_readyM && (branch_miss || jump_miss)) begin
+      //    i_mem_read = 0;
+      // end
+      if (!i_ready && (stall < 2))
+        i_mem_read = 0;
+
+      if (ir_write && !i_ready) begin
+         // if (i_mem_read)
+         pc_write = 0;
+         if (jump_miss || branch_miss)
+           pc_write = 1;
+         // ir_write = 0;
+         flush_if = 1;
+         // bubblify_id = 1;
+      end
+
+      // if (!pc_write && branch_miss) begin
+      //    // free
+      // end
+
       // don't increase num_inst in any kind of hazard
-      incr_num_inst = !(bubblify_id || bubblify_mem || !pc_write ||  flush_if);
+      incr_num_inst = !(bubblify_id || bubblify_mem || !pc_write || flush_if);
+   end // always @ *
+
+   reg [3:0] stall;
+
+   always @(posedge clk) begin
+      if (!reset_n) begin
+         stall <= 0;
+      end
+      else begin
+         if (!i_ready && !(branch_miss || jump_miss)) begin
+            stall <= stall + 1;
+         end
+         else
+           stall <= 0;
+
+         if (!i_ready && stall)
+           i_mem_read <= 1;
+      end
    end
 endmodule // hazard_unit

@@ -138,18 +138,18 @@ BGZ4:		HLT
 BGZ5:		WWD	$0	; TEST #17-3 : BGZ (= 0xFFFF)
 
 		BLZ	$0, BLZ1
-		HLT
-BLZ1:		WWD	$1	; TEST #18-1 : BLZ (= 0x0001)
+		HLT                     ; #94
+BLZ1:		WWD	$1	; TEST #18-1 : BLZ (= 0x0001) ; #95
 
-		BLZ	$1, BLZ2
+		BLZ	$1, BLZ2            ; #96
 		JMP	BLZ3 	; #97
 BLZ2:		HLT
 BLZ3:		WWD	$0	; TEST #18-2 : BLZ (= 0xFFFF)
 
 		BLZ	$2, BLZ4
-		JMP	BLZ5
-BLZ4:		HLT
-BLZ5:		WWD	$1	; TEST #18-3 : BLZ (= 0x0001)
+		JMP	BLZ5                ;9b
+BLZ4:		HLT                 ;9c
+BLZ5:		WWD	$1	; TEST #18-3 : BLZ (= 0x0001) ;9d
 
 		JAL	SIMPLE1 ; #9e
 		WWD	$0	; TEST #19-1 : JAL & JPR (= 0xFFFF)
@@ -186,8 +186,8 @@ FIB:		ADI	$1, $0, -1 ; #b2
 		JPR	$2	; #b6
 		HLT
 FIBRECUR:	SWD	$2, $3, 0 ; #b8
-		SWD	$0, $3, 1
-		ADI	$3, $3, 2
+		SWD	$0, $3, 1     ; #b9
+		ADI	$3, $3, 2     ; #ba
 		ADI	$0, $0, -2
 		JAL	FIB	; #bc
 		LWD	$1, $3, -1

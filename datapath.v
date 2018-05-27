@@ -48,12 +48,13 @@ module datapath
     input                      branch,
 
     // MEM control signals
-    input                      i_mem_read, 
+    // input                      i_mem_read, 
     input                      d_mem_read, 
     input                      i_mem_write,
     input                      d_mem_write,
+    input                      i_ready,
     input                      d_ready,
-    input                      d_next_ready,
+    input                      i_readyM,
     input [WORD_SIZE-1:0]      d_written_address,
 
     // WB control signals
@@ -64,9 +65,9 @@ module datapath
     input                      input_ready,
     output [WORD_SIZE-1:0]     i_address,
     output [WORD_SIZE-1:0]     d_address,
-    output                     i_readM,
+    output                     i_readC,
     output                     d_readC,
-    output                     i_writeM,
+    output                     i_writeC,
     output                     d_writeC,
     inout [WORD_SIZE-1:0]      i_data,
     inout [WORD_SIZE-1:0]      d_data,
@@ -90,9 +91,12 @@ module datapath
    wire [WORD_SIZE-1:0] imm_signed;
 
    // Hazard signals
+   wire                 i_mem_read; // FIXME
    wire                 pc_write, pc_write_cond;
    wire                 ir_write;
    wire                 bubblify_id; // reset all control signals to zero
+   wire                 bubblify_ex;
+   wire                 bubblify_mem;
    wire                 flush_if; // reset IR to nop
    wire                 cond_branch_taken;
 
@@ -145,6 +149,7 @@ module datapath
 
    // unconditional latches
    reg [WORD_SIZE-1:0]  pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
+   reg [WORD_SIZE-1:0]  pc_buffer;
    reg [WORD_SIZE-1:0]  npc_id, npc_ex, npc_mem, npc_wb; // PC + 4 saved for branch resolution and JAL writeback
    reg [WORD_SIZE-1:0]  cond_branch_target_ex; // carry branch target for misprediction check
    reg                  tag_match_id; // BTB search failed in IF;
@@ -168,6 +173,7 @@ module datapath
    // debug purpose: which inst # is being passed through this stage?
    // num_inst_if effectively means "number of instructions fetched"
    reg [WORD_SIZE-1:0]  num_inst_if, num_inst_id, num_inst_ex;
+   reg [WORD_SIZE-1:0]  num_inst_if_saved_buffer;
    reg [WORD_SIZE-1:0]  num_inst_if_saved;
    assign num_inst = num_inst_ex; // num_inst is the inst passing through EX right now
 
@@ -221,7 +227,9 @@ module datapath
 
    hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING),
                  .DATA_FORWARDING(DATA_FORWARDING))
-   HU (.opcode(opcode),
+   HU (.clk(clk),
+       .reset_n(reset_n),
+       .opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
        .jump_miss(jump_miss),
@@ -239,13 +247,16 @@ module datapath
        .d_mem_read_wb(d_mem_read_wb),
        .d_mem_write_mem(d_mem_write_mem),
        .d_mem_write_wb(d_mem_write_wb),
+       .i_ready(i_ready),
+       .i_readyM(i_readyM),
        .d_ready(d_ready),
-       .d_next_ready(d_next_ready),
        .d_written_address(d_written_address),
        .rt_ex(rt_ex),
        .rt_mem(rt_mem),
        .rt_wb(rt_wb),
+       .i_mem_read(i_mem_read),
        .bubblify_id(bubblify_id),
+       .bubblify_ex(bubblify_ex),
        .bubblify_mem(bubblify_mem),
        .flush_if(flush_if),
        .pc_write(pc_write),
@@ -288,8 +299,8 @@ module datapath
    assign npc = (BRANCH_PREDICTOR == `BPRED_NONE || BRANCH_PREDICTOR == `BPRED_ALWAYS_UNTAKEN) ?
                 pc + 1 : npc_pred;
    assign i_address = pc;
-   assign i_readM = i_mem_read;
-   assign i_writeM = 0; // no instruction write
+   assign i_readC = i_mem_read;
+   assign i_writeC = 0; // no instruction write
 
    // ID stage
    assign opcode = ir[15:12];
@@ -415,6 +426,9 @@ module datapath
          // reset all pipeline registers and control signal registers
          // to zero to prevent any initial output
          pc <= 0; pc_id <= 0; pc_ex <= 0; pc_mem <= 0; pc_wb <= 0;
+         pc_buffer <= {WORD_SIZE{1'b1}};
+         num_inst_if_saved <= {WORD_SIZE{1'b1}};
+         num_inst_if_saved_buffer <= {WORD_SIZE{1'b1}};
          npc_id <= 0;
          npc_ex <= 0;
          npc_mem <= 0;
@@ -426,10 +440,14 @@ module datapath
          a_ex <= 0;
          b_ex <= 0;
          b_mem <= 0;
-         alu_out_mem <= 0;
+         alu_out_mem <= 0; alu_out_wb <= 0;
          alu_src_a_ex <= 0; alu_src_b_ex <= 0;
          alu_src_swap_ex <= 0;
          output_write_ex <= 0;
+         d_mem_write_ex <= 0; d_mem_write_mem <= 0; d_mem_write_wb <= 0;
+         write_reg_ex <= 0; write_reg_mem <= 0; write_reg_wb <= 0;
+         reg_write_ex <= 0; reg_write_mem <= 0; reg_write_wb <= 0;
+         reg_write_src_ex <= 0; reg_write_src_mem <= 0; reg_write_src_wb <= 0;
          output_port <= {WORD_SIZE{1'bz}}; // initially float
          num_inst_if <= 0;
          num_inst_id <= 0;
@@ -442,45 +460,58 @@ module datapath
          // PC resolution
          //-------------------------------------------------------------------//
 
-         if (pc_write) begin
-            // Should be careful about the case where conditional
-            // branch and jump is resolved at the same time.
-            //
-            // Since branch is resolved in EX and jump in ID, the
-            // branch is always older than jump, which means the jump
-            // in ID could be a 'false' one that will be flushed if
-            // the branch is revealed to be missed.  So handle
-            // conditional branch miss first.
-            if (cond_branch_miss) begin
+         // Should be careful about the case where conditional
+         // branch and jump is resolved at the same time.
+         //
+         // Since branch is resolved in EX and jump in ID, the
+         // branch is always older than jump, which means the jump
+         // in ID could be a 'false' one that will be flushed if
+         // the branch is revealed to be missed.  So handle
+         // conditional branch miss first.
+         if (cond_branch_miss) begin
+            if (pc_write) begin
                pc <= resolved_pc;
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;
-               // Debug info: update branch miss count.
-               num_branch_miss <= num_branch_miss + 1;
             end
-            // fall through on branch hit, jump or non-branch
-            else if (jump_miss) begin
-               // We are now sure that this jump is not going to be
-               // flushed, and therefore that this is a valid jump
-               // miss.  Update num_branch_miss here as well.
-
-               if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
-                  pc <= jump_target;
-               end
-               else if (opcode == `OPCODE_RTYPE) begin
-                  case (func_code)
-                    `FUNC_JPR, `FUNC_JRL: begin
-                       pc <= data1;
-                    end
-                  endcase
-               end
-               // Debug info: update branch miss count.
-               num_branch_miss <= num_branch_miss + 1;
-            end
-            // fall through on branch hit or non-branch
             else begin
-               pc <= npc;
+               pc_buffer <= resolved_pc;
+               num_inst_if_saved_buffer <= num_inst_if_saved;
             end
+            // Debug info: update branch miss count.
+            num_branch_miss <= num_branch_miss + 1;
+         end
+         // fall through on branch hit, jump or non-branch
+         else if (jump_miss) begin
+            // We are now sure that this jump is not going to be
+            // flushed, and therefore that this is a valid jump
+            // miss.  Update num_branch_miss here as well.
+
+            if (opcode == `OPCODE_JMP || opcode == `OPCODE_JAL) begin
+               if (pc_write)
+                 pc <= jump_target;
+               else
+                 pc_buffer <= jump_target;
+            end
+            else if (opcode == `OPCODE_RTYPE) begin
+               case (func_code)
+                 `FUNC_JPR, `FUNC_JRL: begin
+                    if (pc_write)
+                      pc <= data1;
+                    else
+                      pc_buffer <= data1;
+                 end
+               endcase
+            end
+            // Debug info: update branch miss count.
+            num_branch_miss <= num_branch_miss + 1;
+         end
+         // fall through on branch hit or non-branch
+         else begin
+            if (pc_write)
+              pc <= npc;
+            // else
+            //   pc_buffer <= npc;
          end
 
          //-------------------------------------------------------------------//
@@ -573,13 +604,13 @@ module datapath
 
          // EX stage (MEM+WB)
          if (!freeze_mem) begin
-            halt_mem <= halt_ex;
-            i_mem_read_mem <= i_mem_read_ex;
-            d_mem_read_mem <= d_mem_read_ex;
-            i_mem_write_mem <= i_mem_write_ex;
-            d_mem_write_mem <= d_mem_write_ex;
-            reg_write_mem <= reg_write_ex;
-            reg_write_src_mem <= reg_write_src_ex;
+            halt_mem          <= bubblify_ex ? 0 : halt_ex;
+            i_mem_read_mem    <= bubblify_ex ? 0 : i_mem_read_ex;
+            d_mem_read_mem    <= bubblify_ex ? 0 : d_mem_read_ex;
+            i_mem_write_mem   <= bubblify_ex ? 0 : i_mem_write_ex;
+            d_mem_write_mem   <= bubblify_ex ? 0 : d_mem_write_ex;
+            reg_write_mem     <= bubblify_ex ? 0 : reg_write_ex;
+            reg_write_src_mem <= bubblify_ex ? 0 : reg_write_src_ex;
          end
 
          // MEM stage (WB)
@@ -613,6 +644,17 @@ module datapath
          // num_branch_miss is updated above
          if (incr_num_branch)
            num_branch <= num_branch + 1;
+
+         // if (pc_write) begin
+         //    if (pc_buffer != {WORD_SIZE{1'b1}}) begin
+         //       pc <= pc_buffer;
+         //       pc_buffer <= {WORD_SIZE{1'b1}};
+         //    end
+         //    if (num_inst_if_saved_buffer != {WORD_SIZE{1'b1}}) begin
+         //       num_inst_if <= num_inst_if_saved_buffer;
+         //       num_inst_if_saved_buffer <= {WORD_SIZE{1'b1}};
+         //    end
+         // end
       end
    end
 endmodule

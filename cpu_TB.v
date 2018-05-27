@@ -13,7 +13,9 @@ module cpu_TB();
 	wire i_readM;
 	wire i_writeM;
 	wire [`WORD_SIZE-1:0] i_address;
-	wire [`WORD_SIZE-1:0] i_data;		
+	wire [4*`WORD_SIZE-1:0] i_data;		
+    wire i_readyM;
+    wire i_input_readyM;
 	
 	// Data memory interface
 	wire d_readM;
@@ -41,6 +43,8 @@ module cpu_TB();
              i_writeM,
              i_address,
              i_data,
+             i_readyM,
+             i_input_readyM,
              d_readM,
              d_writeM,
              d_address,
@@ -62,6 +66,8 @@ module cpu_TB();
                 .i_writeM(i_writeM),
                 .i_address(i_address),
                 .i_data(i_data),
+                .i_readyM(i_readyM),
+                .i_input_readyM(i_input_readyM),
                 .d_readM(d_readM),
                 .d_writeM(d_writeM),
                 .d_address(d_address),

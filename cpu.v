@@ -12,7 +12,9 @@ module cpu(
     output                   i_readM, 
     output                   i_writeM, 
     output [`WORD_SIZE-1:0]  i_address, 
-    inout [`WORD_SIZE-1:0]   i_data, 
+    inout [4*`WORD_SIZE-1:0] i_data, 
+    input                    i_readyM,
+    input                    i_input_readyM,
 
     // Data memory interface
     output                   d_readM, 
@@ -72,7 +74,9 @@ module cpu(
    wire        alu_src_swap;
    wire [3:0]  alu_op;
    wire        halt_id;
+   wire        i_readyC;
    wire        d_readyC;
+   wire [`WORD_SIZE-1:0] i_dataC; 
    wire [`WORD_SIZE-1:0] d_dataC; 
 
    control_unit Control (.clk (clk),
@@ -114,12 +118,13 @@ module cpu(
        .alu_src_swap (alu_src_swap),
        .reg_dst (reg_dst),
        .branch(branch),
-       .i_mem_read (i_mem_read),
+       // .i_mem_read (i_mem_read),
        .d_mem_read (d_mem_read),
        .i_mem_write (i_mem_write),
        .d_mem_write (d_mem_write),
+       .i_ready (i_readyC),
        .d_ready (d_readyC),
-       .d_next_ready (d_next_ready),
+       .i_readyM (i_readyM),
        .d_written_address (d_written_address),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
@@ -127,11 +132,11 @@ module cpu(
        .input_ready (input_ready),
        .i_address (i_address),
        .d_address (d_address),
-       .i_readM (i_readM),
+       .i_readC (i_readC),
        .d_readC (d_readC),
-       .i_writeM (i_writeM),
+       .i_writeC (i_writeC),
        .d_writeC (d_writeC),
-       .i_data (i_data),
+       .i_data (i_dataC),
        .d_data (d_dataC),
        .output_port (output_port),
        .opcode(opcode),
@@ -144,7 +149,23 @@ module cpu(
        );
 
    cache #(.WORD_SIZE(`WORD_SIZE))
-   Cache (.clk(clk),
+   ICache (.clk(clk),
+          .reset_n(reset_n),
+          .readC(i_readC),
+          .writeC(i_writeC),
+          .readyM(i_readyM),
+          .input_readyM(i_input_readyM),
+          .doneM(i_doneM),
+          .address(i_address),
+          .data(i_dataC),
+          .dataM(i_data),
+          .readM(i_readM),
+          .writeM(i_writeM),
+          .readyC(i_readyC)
+          );
+
+   cache #(.WORD_SIZE(`WORD_SIZE))
+   DCache (.clk(clk),
           .reset_n(reset_n),
           .readC(d_readC),
           .writeC(d_writeC),

@@ -83,6 +83,7 @@ module control_unit(
       pc_src = `PCSRC_SEQ;
       reg_dst = `REGDST_RD;
       reg_write = 0; // only write for RTYPE and LOAD
+      reg_write_src = `REGWRITESRC_ALU;
       ALUMode = 0;
       alu_src_a = 0;
       alu_src_b = 0;

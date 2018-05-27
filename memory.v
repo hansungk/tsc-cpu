@@ -6,23 +6,25 @@
 
 module Memory
   #(parameter READ_SIZE = 4*`WORD_SIZE)
-   (clk, reset_n, i_readM, i_writeM, i_address, i_data, i_ready, d_readM, d_writeM, d_address, d_data, d_readyM, d_input_readyM, d_doneM, d_written_address);
+   (clk, reset_n, i_readM, i_writeM, i_address, i_data, i_readyM, i_input_readyM, d_readM, d_writeM, d_address, d_data, d_readyM, d_input_readyM, d_doneM, d_written_address);
    input clk;
    wire  clk;
    input reset_n;
    wire  reset_n;
    
    // Instruction memory interface
-   input i_readM;
-   wire  i_readM;
-   input i_writeM;
-   wire  i_writeM;
+   input                  i_readM;
+   wire                   i_readM;
+   input                  i_writeM;
+   wire                   i_writeM;
    input [`WORD_SIZE-1:0] i_address;
    wire [`WORD_SIZE-1:0]  i_address;
-   inout [`WORD_SIZE-1:0] i_data;
-   wire [`WORD_SIZE-1:0]  i_data;
-   output                 i_ready;
-   wire                   i_ready;
+   inout [READ_SIZE-1:0]  i_data;
+   wire [READ_SIZE-1:0]   i_data;
+   output                 i_readyM;
+   wire                   i_readyM;
+   output                 i_input_readyM;
+   reg                    i_input_readyM;
    
    // Data memory interface
    input                  d_readM;
@@ -31,21 +33,19 @@ module Memory
    wire                   d_writeM;
    input [`WORD_SIZE-1:0] d_address;
    wire [`WORD_SIZE-1:0]  d_address;
-   inout [READ_SIZE-1:0] d_data;
-   wire [READ_SIZE-1:0]  d_data;
+   inout [READ_SIZE-1:0]  d_data;
+   wire [READ_SIZE-1:0]   d_data;
    output                 d_readyM;
    wire                   d_readyM;
    output                 d_input_readyM;
    reg                    d_input_readyM;
    output                 d_doneM;
    reg                    d_doneM;
-   output                 d_next_ready;
-   reg                    d_next_ready;
    output [`WORD_SIZE-1:0] d_written_address;
    wire [`WORD_SIZE-1:0]   d_written_address;
    
    reg [`WORD_SIZE-1:0]   memory [0:`MEMORY_SIZE-1];
-   reg [`WORD_SIZE-1:0]   i_outputData;
+   reg [READ_SIZE-1:0]   i_outputData;
    reg [READ_SIZE-1:0]   d_outputData;
 
    //-------------------------------------------------------------------------//
@@ -56,20 +56,28 @@ module Memory
    // Blocking opeartions; only supports one operation at a time.
 
    // Mimic latency using a simple counter.
-   reg [2:0]              count;
+   reg [2:0]              i_count;
+   reg [2:0]              d_count;
 
    // Hold input signals to unchange while busy.
+   reg                    i_readM_temp;
+   reg                    i_writeM_temp;
+   reg [`WORD_SIZE-1:0]   i_address_temp;
+   reg [READ_SIZE-1:0]    i_data_temp;
    reg                    d_readM_temp;
    reg                    d_writeM_temp;
    reg [`WORD_SIZE-1:0]   d_address_temp;
-   reg [READ_SIZE-1:0]   d_data_temp;
+   reg [READ_SIZE-1:0]    d_data_temp;
 
-   assign d_readyM = /*!(d_readM || d_writeM) && */(count == 0);
-   assign i_data = i_readM?i_outputData:{READ_SIZE{1'bz}};
+   assign i_data = (i_input_readyM) ? i_outputData : {READ_SIZE{1'bz}};
+   assign i_readyM = (i_count == 0);
+
+   assign d_readyM = /*!(d_readM || d_writeM) && */(d_count == 0);
    // show read data at the last cycle
-   // assign d_data = (d_readM && count == 0) ? d_outputData : {READ_SIZE{1'bz}};
    assign d_data = (d_input_readyM) ? d_outputData : {READ_SIZE{1'bz}};
    assign d_written_address = d_address_temp;
+
+   integer               i;
    
    always@(posedge clk)
 	 if(!reset_n)
@@ -274,6 +282,14 @@ module Memory
 		  memory[16'hc5] <= 16'hf819;
 		  memory[16'hc6] <= 16'hf01d;
 
+          i_readM_temp <= 0;
+          i_writeM_temp <= 0;
+          i_address_temp <= 0;
+          i_data_temp <= {READ_SIZE{1'bz}};
+          i_outputData <= {READ_SIZE{1'bz}};
+          i_input_readyM <= 0;
+          i_count <= 0;
+
           d_readM_temp <= 0;
           d_writeM_temp <= 0;
           d_address_temp <= 0;
@@ -281,18 +297,58 @@ module Memory
           d_outputData <= {READ_SIZE{1'bz}};
           d_input_readyM <= 0;
           d_doneM <= 0;
-          d_next_ready <= 1;
-          count <= 0;
-	   end
-     else
-       begin
-          if(i_readM)i_outputData <= memory[i_address];
-          if(i_writeM)memory[i_address] <= i_data;
-       end // else: !if(!reset_n)
+          d_count <= 0;
+	   end // if (!reset_n)
 
    always @(negedge clk) begin
       if (reset_n) begin
-         if (count == 1) begin
+         if (i_count == 1) begin
+            if (i_readM_temp)
+              i_input_readyM <= 1;
+         end
+         else begin
+            i_input_readyM <= 0;
+         end
+         
+          if (i_count == 0) begin
+             if (i_readM || i_writeM) begin
+                i_count <= 4;
+                i_readM_temp <= i_readM;
+                i_writeM_temp <= i_writeM;
+                i_address_temp <= i_address;
+                i_data_temp <= i_data;
+             end
+             else begin
+                i_readM_temp <= 0;
+                i_writeM_temp <= 0;
+                i_address_temp <= 0;
+             end
+          end
+          else begin
+             // do work at the last cycle
+             if (i_count == 1) begin
+                if (i_readM_temp) begin
+                   i_outputData[`WORD_SIZE-1:0] <= memory[{i_address_temp[15:2], 2'b00}];
+                   i_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 1];
+                   i_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 2];
+                   i_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{i_address_temp[15:2], 2'b00} + 3];
+                end
+                else if (i_writeM_temp) begin
+                   memory[{i_address_temp[15:2], 2'b00}] <= i_data_temp[`WORD_SIZE-1:0];
+                   memory[{i_address_temp[15:2], 2'b00} + 1] <= i_data_temp[2*`WORD_SIZE-1:`WORD_SIZE];
+                   memory[{i_address_temp[15:2], 2'b00} + 2] <= i_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
+                   memory[{i_address_temp[15:2], 2'b00} + 3] <= i_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
+                end
+             end
+
+             i_count <= i_count - 1;
+          end
+      end
+   end
+
+   always @(negedge clk) begin
+      if (reset_n) begin
+         if (d_count == 1) begin
             d_doneM <= 1;
             if (d_readM_temp)
               d_input_readyM <= 1;
@@ -302,10 +358,9 @@ module Memory
             d_input_readyM <= 0;
          end
          
-          // if (count == 0) begin
-          if (count == 0) begin
+          if (d_count == 0) begin
              if (d_readM || d_writeM) begin
-                count <= 4;
+                d_count <= 4;
                 d_readM_temp <= d_readM;
                 d_writeM_temp <= d_writeM;
                 d_address_temp <= d_address;
@@ -319,13 +374,12 @@ module Memory
           end
           else begin
              // do work at the last cycle
-             if (count == 1) begin
+             if (d_count == 1) begin
                 if (d_readM_temp) begin
                    d_outputData[`WORD_SIZE-1:0] <= memory[{d_address_temp[15:2], 2'b00}];
                    d_outputData[2*`WORD_SIZE-1:`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 1];
                    d_outputData[3*`WORD_SIZE-1:2*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 2];
                    d_outputData[4*`WORD_SIZE-1:3*`WORD_SIZE] <= memory[{d_address_temp[15:2], 2'b00} + 3];
-                   // d_outputData <= memory[d_address_temp + 3 : d_address_temp];
                 end
                 else if (d_writeM_temp) begin
                    memory[{d_address_temp[15:2], 2'b00}] <= d_data_temp[`WORD_SIZE-1:0];
@@ -333,17 +387,10 @@ module Memory
                    memory[{d_address_temp[15:2], 2'b00} + 2] <= d_data_temp[3*`WORD_SIZE-1:2*`WORD_SIZE];
                    memory[{d_address_temp[15:2], 2'b00} + 3] <= d_data_temp[4*`WORD_SIZE-1:3*`WORD_SIZE];
                 end
-             end // if (count == 1)
+             end
 
-             count <= count - 1;
-          end // else: !if(count == 0)
+             d_count <= d_count - 1;
+          end
       end
    end // always @ (negedge clk)
-
-   always @(negedge clk) begin
-      if (count == 0)
-        d_next_ready <= 1;
-      else
-        d_next_ready <= 0;
-   end
 endmodule
