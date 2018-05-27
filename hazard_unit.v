@@ -27,7 +27,7 @@ module hazard_unit
     input                  d_mem_write_mem,
     input                  d_mem_write_wb,
     input                  i_ready,
-    input                  i_readyM,
+    input                  i_input_ready,
     input                  d_ready,
     input [`WORD_SIZE-1:0] d_written_address,
     input [1:0]            rt_ex, 
@@ -152,9 +152,11 @@ module hazard_unit
       //
       // This happens because of the I-Cache miss.
       i_mem_read = 1;
+
       // if (i_readyM && (branch_miss || jump_miss)) begin
       //    i_mem_read = 0;
       // end
+
       if (!i_ready && (stall < 2))
         i_mem_read = 0;
 

@@ -53,8 +53,8 @@ module datapath
     input                      i_mem_write,
     input                      d_mem_write,
     input                      i_ready,
+    input                      i_input_ready,
     input                      d_ready,
-    input                      i_readyM,
     input [WORD_SIZE-1:0]      d_written_address,
 
     // WB control signals
@@ -62,7 +62,6 @@ module datapath
     input [1:0]                reg_write_src,
     input                      halt_id,
 
-    input                      input_ready,
     output [WORD_SIZE-1:0]     i_address,
     output [WORD_SIZE-1:0]     d_address,
     output                     i_read,
@@ -248,7 +247,7 @@ module datapath
        .d_mem_write_mem(d_mem_write_mem),
        .d_mem_write_wb(d_mem_write_wb),
        .i_ready(i_ready),
-       .i_readyM(i_readyM),
+       .i_input_ready(i_input_ready),
        .d_ready(d_ready),
        .d_written_address(d_written_address),
        .rt_ex(rt_ex),

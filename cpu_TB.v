@@ -32,6 +32,10 @@ module cpu_TB();
 	wire [`WORD_SIZE-1:0] num_inst;		// number of instruction during execution
 	wire [`WORD_SIZE-1:0] num_branch;	// number of branch instruction
 	wire [`WORD_SIZE-1:0] num_branch_miss;	// number of branch misses
+	wire [`WORD_SIZE-1:0] num_icache_access;	// number of cache read/write access
+	wire [`WORD_SIZE-1:0] num_icache_miss;	// number of cache miss
+	wire [`WORD_SIZE-1:0] num_dcache_access;	// number of cache read/write access
+	wire [`WORD_SIZE-1:0] num_dcache_miss;	// number of cache miss
 	wire [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	wire is_halted;				// set if the cpu is halted
 
@@ -58,12 +62,16 @@ module cpu_TB();
         num_inst,
         num_branch,
         num_branch_miss,
+        num_icache_access,
+        num_icache_miss,
+        num_dcache_access,
+        num_dcache_miss,
         output_port,
         is_halted);
 	// Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
    Memory #(.READ_SIZE(4*`WORD_SIZE),
             .CACHE(0))
-   NUUT(.clk(!clk),
+   NUUT(.clk(clk),
         .reset_n(reset_n),
         .i_readM(i_readM),
         .i_writeM(i_writeM),
@@ -209,10 +217,14 @@ module cpu_TB();
 		else
 			$display("Pass : %0d/%0d", Passed, `NUM_TEST);
 
-       // Display branch prediction result
-       $display("Branch prediction : %0d hit, %0d miss, %0d total",
-                num_branch - num_branch_miss, num_branch_miss, num_branch);
-		$finish;
+           // Display branch prediction result
+           $display("Branch prediction : %0d hit, %0d miss, %0d total",
+                    num_branch - num_branch_miss, num_branch_miss, num_branch);
+           $display("ICache : %0d hit, %0d miss, %0d total",
+                    num_icache_access - num_icache_miss, num_icache_miss, num_icache_access);
+           $display("DCache : %0d hit, %0d miss, %0d total",
+                    num_dcache_access - num_dcache_miss, num_dcache_miss, num_dcache_access);
+	   $finish;
 	end
 
 endmodule  

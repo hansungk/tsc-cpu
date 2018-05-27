@@ -30,7 +30,11 @@ module cpu(
     output [`WORD_SIZE-1:0]  num_inst, 
     output [`WORD_SIZE-1:0]  num_branch, 
     output [`WORD_SIZE-1:0]  num_branch_miss, 
-    output [`WORD_SIZE-1:0]  output_port, 
+    output [`WORD_SIZE-1:0]  num_icache_access, 
+    output [`WORD_SIZE-1:0]  num_icache_miss,
+    output [`WORD_SIZE-1:0]  num_dcache_access, 
+    output [`WORD_SIZE-1:0]  num_dcache_miss,
+    output [`WORD_SIZE-1:0]  output_port,
     output                   is_halted
 );
    //===-------------------------------------------------------------------===//
@@ -66,7 +70,6 @@ module cpu(
    wire        branch;
    wire        i_or_d;
    wire        bubblify;
-   wire        input_ready;
    wire [3:0]  opcode;
    wire [2:0]  inst_type;
    wire [5:0]  func_code;
@@ -95,14 +98,22 @@ module cpu(
    wire [`WORD_SIZE-1:0] d_dataC;
 
    // Switch connection to data ports between cache or direct to memory
-   assign i_ready = CACHE ? i_readyC : i_readyM;
-   assign d_ready = CACHE ? d_readyC : d_readyM;
-   assign i_readM = CACHE ? i_readM_from_cache : i_read;
-   assign d_readM = CACHE ? d_readM_from_cache : d_read;
-   assign i_writeM = CACHE ? i_writeM_from_cache : i_write;
-   assign d_writeM = CACHE ? d_writeM_from_cache : d_write;
-   assign i_data  = CACHE ? i_dataC  : i_dataM;
-   assign d_data  = CACHE ? d_dataC  : d_dataM;
+   // assign i_ready = CACHE ? i_readyC : i_input_readyM;
+   // assign d_ready = CACHE ? d_readyC : d_readyM;
+   // assign i_readM = CACHE ? i_readM_from_cache : i_read;
+   // assign d_readM = CACHE ? d_readM_from_cache : d_read;
+   // assign i_writeM = CACHE ? i_writeM_from_cache : i_write;
+   // assign d_writeM = CACHE ? d_writeM_from_cache : d_write;
+   assign i_ready = i_readyC;
+   assign d_ready = d_readyC;
+   assign i_readM = i_readM_from_cache;
+   assign d_readM = d_readM_from_cache;
+   assign i_writeM = i_writeM_from_cache;
+   assign d_writeM = d_writeM_from_cache;
+
+   assign i_data  = i_read ? i_dataC : `WORD_SIZE'bz;
+   assign d_data  = d_read ? d_dataC : `WORD_SIZE'bz;
+   assign d_dataC = d_write ? d_data : `WORD_SIZE'bz;
 
    control_unit Control (.clk (clk),
                          .reset_n (reset_n),
@@ -148,13 +159,12 @@ module cpu(
        .i_mem_write (i_mem_write),
        .d_mem_write (d_mem_write),
        .i_ready (i_ready),
+       .i_input_ready (i_input_readyM),
        .d_ready (d_ready),
-       .i_readyM (i_readyM),
        .d_written_address (d_written_address),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
        .halt_id(halt_id),
-       .input_ready (input_ready),
        .i_address (i_address),
        .d_address (d_address),
        .i_read (i_read),
@@ -173,35 +183,39 @@ module cpu(
        .num_branch_miss (num_branch_miss)
        );
 
-   cache #(.WORD_SIZE(`WORD_SIZE))
+   cache #(.WORD_SIZE(`WORD_SIZE),
+           .BYPASS(!CACHE))
    ICache (.clk(clk),
-          .reset_n(reset_n),
-          .readC(i_read),
-          .writeC(i_write),
-          .readyM(i_readyM),
-          .input_readyM(i_input_readyM),
-          .doneM(i_doneM),
-          .address(i_address),
-          .data(i_dataC),
-          .dataM(i_dataM),
-          .readM(i_readM_from_cache),
-          .writeM(i_writeM_from_cache),
-          .readyC(i_readyC)
-          );
+           .reset_n(reset_n),
+           .readC(i_read),
+           .writeC(i_write),
+           .input_readyM(i_input_readyM),
+           .doneM(i_doneM),
+           .address(i_address),
+           .data(i_dataC),
+           .dataM(i_dataM),
+           .readM(i_readM_from_cache),
+           .writeM(i_writeM_from_cache),
+           .readyC(i_readyC),
+           .num_cache_access(num_icache_access),
+           .num_cache_miss(num_icache_miss)
+           );
 
-   cache #(.WORD_SIZE(`WORD_SIZE))
+   cache #(.WORD_SIZE(`WORD_SIZE),
+           .BYPASS(!CACHE))
    DCache (.clk(clk),
-          .reset_n(reset_n),
-          .readC(d_read),
-          .writeC(d_write),
-          .readyM(d_readyM),
-          .input_readyM(d_input_readyM),
-          .doneM(d_doneM),
-          .address(d_address),
-          .data(d_dataC),
-          .dataM(d_dataM),
-          .readM(d_readM_from_cache),
-          .writeM(d_writeM_from_cache),
-          .readyC(d_readyC)
+           .reset_n(reset_n),
+           .readC(d_read),
+           .writeC(d_write),
+           .input_readyM(d_input_readyM),
+           .doneM(d_doneM),
+           .address(d_address),
+           .data(d_dataC),
+           .dataM(d_dataM),
+           .readM(d_readM_from_cache),
+           .writeM(d_writeM_from_cache),
+           .readyC(d_readyC),
+           .num_cache_access(num_dcache_access),
+           .num_cache_miss(num_dcache_miss)
           );
 endmodule
