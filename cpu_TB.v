@@ -41,7 +41,7 @@ module cpu_TB();
 
 	// instantiate the unit under test
 	// cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
-   cpu #(.CACHE(0))
+   cpu #(.CACHE(1))
    UUT (clk,
         reset_n,
         i_readM,
@@ -70,7 +70,7 @@ module cpu_TB();
         is_halted);
 	// Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
    Memory #(.READ_SIZE(4*`WORD_SIZE),
-            .CACHE(0))
+            .CACHE(1))
    NUUT(.clk(clk),
         .reset_n(reset_n),
         .i_readM(i_readM),
