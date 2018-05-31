@@ -5,14 +5,15 @@
 
 module hazard_unit
   #(parameter RF_SELF_FORWARDING = 1,
-    parameter DATA_FORWARDING = 1)
+    parameter DATA_FORWARDING = 1,
+    parameter CACHE = 1)
    (input                  clk,
     input                  reset_n,
     input [3:0]            opcode,
     input [2:0]            inst_type,
     input [5:0]            func_code,
-    input                  jump_miss, // misprediction for unconditional branch
-    input                  branch_miss, // used for branch prediction 
+    input                  jump_miss, // misprediction of unconditional branch
+    input                  cond_branch_miss, // misprediction of conditional branch
     input [1:0]            rs_id, 
     input [1:0]            rt_id, 
     input                  reg_write_ex,
@@ -134,9 +135,9 @@ module hazard_unit
             flush_if = 1;
          end
 
-         // branch_miss is always 1 on no prediction, so this becomes
+         // cond_branch_miss is always 1 on no prediction, so this becomes
          // unconditional stall-on-branch.
-         if (branch_miss) begin
+         if (cond_branch_miss) begin
             // On branch miss, flush IF and bubblify ID, effectively erasing two
             // instructions.
             bubblify_id = 1;
@@ -149,24 +150,28 @@ module hazard_unit
       // This happens because of the I-Cache miss.
       i_mem_read = 1;
 
-      // if (i_readyM && (branch_miss || jump_miss)) begin
-      //    i_mem_read = 0;
-      // end
-
-      if (!i_ready && (stall < 2))
-        i_mem_read = 0;
+      // XXX hack for no-cache baseline: stall 2 cycles at the start of each
+      // instruction to prevent I-mem read & D-mem read race.
+      if (!CACHE)
+        if (!i_ready && (stall < 2))
+          i_mem_read = 0;
 
       if (ir_write && !i_ready) begin
-         pc_write = 0;
-         if (jump_miss || branch_miss)
-           pc_write = 1;
-         flush_if = 1;
-         // pc_write = 0;
-         // ir_write = 0;
-         // flush_if = 0;
-         // freeze_ex = 1;
-         // freeze_mem = 1;
-         // bubblify_mem = 1;
+         if (!CACHE) begin
+            // XXX hack for no-cache baseline: cancel initiating I-mem read for
+            // instruction fetch if branch miss occurs.
+            pc_write = 0;
+            if (jump_miss || cond_branch_miss)
+              pc_write = 1;
+            flush_if = 1;
+         end else begin
+            pc_write = 0;
+            ir_write = 0;
+            flush_if = 0;
+            freeze_ex = 1;
+            freeze_mem = 1;
+            bubblify_mem = 1;
+         end
       end
 
       // don't increase num_inst in any kind of hazard
@@ -180,7 +185,7 @@ module hazard_unit
          stall <= 0;
       end
       else begin
-         if (!i_ready && !(branch_miss || jump_miss)) begin
+         if (!i_ready && !(cond_branch_miss || jump_miss)) begin
             stall <= stall + 1;
          end
          else

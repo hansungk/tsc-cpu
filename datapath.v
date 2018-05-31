@@ -28,7 +28,8 @@ module datapath
   #(parameter WORD_SIZE = `WORD_SIZE,
     parameter RF_SELF_FORWARDING = 1,
     parameter DATA_FORWARDING = 1,
-    parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER)
+    parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER,
+    parameter CACHE = 1)
    (input                      clk,
     input                      reset_n,
     input [1:0]                pc_src,
@@ -225,14 +226,15 @@ module datapath
                        .inst_type(inst_type));
 
    hazard_unit #(.RF_SELF_FORWARDING(RF_SELF_FORWARDING),
-                 .DATA_FORWARDING(DATA_FORWARDING))
+                 .DATA_FORWARDING(DATA_FORWARDING),
+                 .CACHE(CACHE))
    HU (.clk(clk),
        .reset_n(reset_n),
        .opcode(opcode),
        .inst_type(inst_type),
        .func_code(func_code),
        .jump_miss(jump_miss),
-       .branch_miss(cond_branch_miss),
+       .cond_branch_miss(cond_branch_miss),
        .rs_id(rs),
        .rt_id(rt),
        .reg_write_ex(reg_write_ex),

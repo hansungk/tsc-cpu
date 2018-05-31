@@ -5,6 +5,8 @@
 `define NUM_TEST 56
 `define TESTID_SIZE 5
 
+`define CACHE 1
+
 module cpu_TB();
 	reg reset_n;	// active-low RESET signal
 	reg clk;		// clock signal	
@@ -41,7 +43,7 @@ module cpu_TB();
 
 	// instantiate the unit under test
 	// cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
-   cpu #(.CACHE(1))
+   cpu #(.CACHE(`CACHE))
    UUT (clk,
         reset_n,
         i_readM,
@@ -70,7 +72,7 @@ module cpu_TB();
         is_halted);
 	// Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
    Memory #(.READ_SIZE(4*`WORD_SIZE),
-            .CACHE(1))
+            .CACHE(`CACHE))
    NUUT(.clk(clk),
         .reset_n(reset_n),
         .i_readM(i_readM),
@@ -103,7 +105,8 @@ module cpu_TB();
 	always #(`PERIOD1/2)clk = ~clk;  // generates a clock (period = `PERIOD1)
 		
 	event testbench_finish;	// This event will finish the testbench.
-	initial #(`PERIOD1*10000) -> testbench_finish; // Only 10,000 cycles are allowed.
+	// initial #(`PERIOD1*10000) -> testbench_finish; // Only 10,000 cycles are allowed.
+	initial #(`PERIOD1*5000) -> testbench_finish; // for easier waveform finding
 		
 	reg [`TESTID_SIZE*8-1:0] TestID[`NUM_TEST-1:0];
 	reg [`WORD_SIZE-1:0] TestNumInst [`NUM_TEST-1:0];

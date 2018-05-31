@@ -141,7 +141,8 @@ module cpu(
    datapath #(.WORD_SIZE (`WORD_SIZE),
               .RF_SELF_FORWARDING(RF_SELF_FORWARDING),
               .DATA_FORWARDING(DATA_FORWARDING),
-              .BRANCH_PREDICTOR(BRANCH_PREDICTOR))
+              .BRANCH_PREDICTOR(BRANCH_PREDICTOR),
+              .CACHE(CACHE))
    DP (
        .clk(clk),
        .reset_n (reset_n),
