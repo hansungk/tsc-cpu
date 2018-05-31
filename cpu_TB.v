@@ -105,8 +105,7 @@ module cpu_TB();
 	always #(`PERIOD1/2)clk = ~clk;  // generates a clock (period = `PERIOD1)
 		
 	event testbench_finish;	// This event will finish the testbench.
-	// initial #(`PERIOD1*10000) -> testbench_finish; // Only 10,000 cycles are allowed.
-	initial #(`PERIOD1*5000) -> testbench_finish; // for easier waveform finding
+	initial #(`PERIOD1*10000) -> testbench_finish; // Only 10,000 cycles are allowed.
 		
 	reg [`TESTID_SIZE*8-1:0] TestID[`NUM_TEST-1:0];
 	reg [`WORD_SIZE-1:0] TestNumInst [`NUM_TEST-1:0];

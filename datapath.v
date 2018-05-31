@@ -295,8 +295,7 @@ module datapath
    //-------------------------------------------------------------------------//
 
    // IF stage
-   // Connect npc to either BTB or pc+1 depending on prediction policy
-   // (or lack thereof)
+   // Connect npc to either BTB or pc+1 depending on the prediction policy
    assign npc = (BRANCH_PREDICTOR == `BPRED_NONE || BRANCH_PREDICTOR == `BPRED_ALWAYS_UNTAKEN) ?
                 pc + 1 : npc_pred;
    assign i_address = pc;
@@ -367,11 +366,11 @@ module datapath
       // Update BHT according to the branch outcome.  Done regardless
       // of hit/miss.
       //
-      // If both conditional branch in EX and unconditional branch in
-      // ID was mispredicted (possible with indirect jumps such as
-      // JPR), prioritize conditional branch because the ID stage
-      // contains speculative, to-be-flushed instruction.  Update
-      // num_branch here as well.  (same as PC resolution logic below)
+      // If both conditional branch in EX and unconditional branch in ID was
+      // mispredicted (possible with indirect jumps such as JPR), prioritize
+      // conditional branch because then the ID stage instruction will be
+      // flushed away.  Update num_branch here as well.  (same as PC resolution
+      // logic below)
       if (branch_ex) begin // at EX stage
          update_bht = 1;
          pc_outcome = pc_ex;
@@ -396,9 +395,7 @@ module datapath
          incr_num_branch = 0;
       end
 
-      // Cancel all this if this EX stage was stalled.
-      // Prevents BHT continually increasing/decreasing when the pipeline
-      // stalled while handling a branch.
+      // Cancel all this if this EX stage had been stalled.
       if (freeze_ex) begin
          update_bht = 0;
          incr_num_branch = 0;
@@ -514,8 +511,6 @@ module datapath
          else begin
             if (pc_write)
               pc <= npc;
-            // else
-            //   pc_buffer <= npc;
          end
 
          //-------------------------------------------------------------------//
