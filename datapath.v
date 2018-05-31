@@ -474,13 +474,13 @@ module datapath
                pc <= resolved_pc;
                // Restore num_inst_if back to what it was.
                num_inst_if <= num_inst_if_saved;
+               // Debug info: update branch miss count.
+               num_branch_miss <= num_branch_miss + 1;
             end
             else begin
                pc_buffer <= resolved_pc;
                num_inst_if_saved_buffer <= num_inst_if_saved;
             end
-            // Debug info: update branch miss count.
-            num_branch_miss <= num_branch_miss + 1;
          end
          // fall through on branch hit, jump or non-branch
          else if (jump_miss) begin
@@ -504,8 +504,11 @@ module datapath
                  end
                endcase
             end
-            // Debug info: update branch miss count.
-            num_branch_miss <= num_branch_miss + 1;
+
+            if (pc_write) begin
+               // Debug info: update branch miss count.
+               num_branch_miss <= num_branch_miss + 1;
+            end
          end
          // fall through on branch hit or non-branch
          else begin
