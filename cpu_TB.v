@@ -41,6 +41,18 @@ module cpu_TB();
 	wire [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	wire is_halted;				// set if the cpu is halted
 
+    // DMA
+	wire BG;
+	wire cmd;
+	wire BR;
+	wire [4 * `WORD_SIZE - 1 : 0] edata;
+	wire dma_READ;
+	wire [`WORD_SIZE - 1 : 0] dma_addr;
+	wire [`WORD_SIZE * 4 - 1 : 0] dma_data;
+	wire [1:0] dma_offset;
+	wire dma_end_int;
+	wire dma_start_int;
+
 	// instantiate the unit under test
 	// cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
    cpu #(.CACHE(`CACHE))
@@ -89,6 +101,11 @@ module cpu_TB();
         .d_input_readyM(d_input_readyM),
         .d_doneM(d_doneM),
         .d_written_address(d_written_address));
+
+	DMA DMA(.CLK(CLK), .BG(BG),  .edata(edata), .cmd(cmd), .BR(BR), .READ(dma_READ),
+	    .addr(dma_addr), .data(dma_data), .offset(dma_offset), .interrupt(dma_end_int));
+
+	external_device edevice(.offset(dma_offset), .interrupt(dma_start_int), .data(edata));
 
 	// initialize inputs
 	initial begin

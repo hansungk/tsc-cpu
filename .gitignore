@@ -1,4 +1,5 @@
 pipelined
+*.disabled
 *.vcd
 *.aux
 *.log
