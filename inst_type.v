@@ -2,6 +2,7 @@
 // Jump, Output, Nop)
 
 `include "constants.v"
+`include "opcodes.v"
 
 module InstTypeDecoder(
    input [3:0]      opcode,
