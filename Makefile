@@ -1,7 +1,7 @@
 PROG := pipelined
 
 all: *.v
-	iverilog -o $(PROG) $^
+	iverilog -o $(PROG) -s cpu_TB $^
 
 doc: pipelined.pdf
 
