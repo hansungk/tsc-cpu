@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
-[*] Fri Jun  1 14:00:21 2018
+[*] Fri Jun  1 15:38:53 2018
 [*]
 [dumpfile] "/home/stephen/pipelined/pipelined.vcd"
-[dumpfile_mtime] "Fri Jun  1 13:59:30 2018"
-[dumpfile_size] 2138425
+[dumpfile_mtime] "Fri Jun  1 15:35:58 2018"
+[dumpfile_size] 2140928
 [savefile] "/home/stephen/pipelined/dma.gtkw"
-[timestart] 39402000
+[timestart] 43276000
 [size] 3840 2029
 [pos] -1 -1
-*-19.725235 45157000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.725235 46950000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
@@ -74,10 +74,16 @@ cpu_TB.UUT.DCache.hit
 cpu_TB.UUT.DCache.readyC
 @200
 -DMA
+@29
+cpu_TB.edevice.interrupt
 @28
-cpu_TB.UUT.DP.HU.dma_begin
-cpu_TB.UUT.DP.HU.dma_end
-cpu_TB.UUT.DP.HU.interrupted
+cpu_TB.UUT.DP.interrupted
+@22
+cpu_TB.DMA.cmd[31:0]
+@28
+cpu_TB.DMA.BR
+cpu_TB.DMA.BG
+cpu_TB.UUT.DP.dma_end
 @c00022
 cpu_TB.UUT.DP.pc[15:0]
 @28
