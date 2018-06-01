@@ -5,3 +5,6 @@
 
 ** hazard_unit.v
 - Added port dma_begin, dma_end
+
+** cache.v
+- Add !bus_granted for readM and writeM
