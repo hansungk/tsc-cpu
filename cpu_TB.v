@@ -43,7 +43,7 @@ module cpu_TB();
 
     // DMA
 	wire BG;
-	wire cmd;
+	wire [2 * `WORD_SIZE - 1 : 0] cmd;
 	wire BR;
 	wire [4 * `WORD_SIZE - 1 : 0] edata;
 	wire dma_READ;
@@ -56,33 +56,37 @@ module cpu_TB();
 	// instantiate the unit under test
 	// cpu UUT (clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data, num_inst, num_branch, num_branch_miss, output_port, is_halted);
    cpu #(.CACHE(`CACHE))
-   UUT (clk,
-        reset_n,
-        i_readM,
-        i_writeM,
-        i_address,
-        i_data,
-        i_readyM,
-        i_input_readyM,
-        d_readM,
-        d_writeM,
-        d_address,
-        d_data,
-        d_readyM,
-        d_input_readyM,
-        d_doneM,
-        d_next_ready,
-        d_written_address,
-        num_inst,
-        num_branch,
-        num_branch_miss,
-        num_icache_access,
-        num_icache_miss,
-        num_dcache_access,
-        num_dcache_miss,
-        output_port,
-        is_halted);
-	// Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
+   UUT (.clk(clk),
+        .reset_n(reset_n),
+        .i_readM(i_readM),
+        .i_writeM(i_writeM),
+        .i_address(i_address),
+        .i_dataM(i_data),
+        .i_readyM(i_readyM),
+        .i_input_readyM(i_input_readyM),
+        .d_readM(d_readM),
+        .d_writeM(d_writeM),
+        .d_address(d_address),
+        .d_dataM(d_data),
+        .d_readyM(d_readyM),
+        .d_input_readyM(d_input_readyM),
+        .d_doneM(d_doneM),
+        .dma_begin(dma_start_int),
+        .dma_end(dma_end_int),
+        .bus_request(BR),
+        .bus_granted(BG),
+        .dma_cmd(cmd),
+        .num_inst(num_inst),
+        .num_branch(num_branch),
+        .num_branch_miss(num_branch_miss),
+        .num_icache_access(num_icache_access),
+        .num_icache_miss(num_icache_miss),
+        .num_dcache_access(num_dcache_access),
+        .num_dcache_miss(num_dcache_miss),
+        .output_port(output_port),
+        .is_halted(is_halted));
+
+   // Memory NUUT(!clk, reset_n, i_readM, i_writeM, i_address, i_data, d_readM, d_writeM, d_address, d_data);
    Memory #(.READ_SIZE(4*`WORD_SIZE),
             .CACHE(`CACHE))
    NUUT(.clk(clk),
@@ -102,7 +106,7 @@ module cpu_TB();
         .d_doneM(d_doneM),
         .d_written_address(d_written_address));
 
-	DMA DMA(.CLK(CLK), .BG(BG),  .edata(edata), .cmd(cmd), .BR(BR), .READ(dma_READ),
+	DMA DMA(.CLK(clk), .BG(BG),  .edata(edata), .cmd(cmd), .BR(BR), .READ(dma_READ),
 	    .addr(dma_addr), .data(dma_data), .offset(dma_offset), .interrupt(dma_end_int));
 
 	external_device edevice(.offset(dma_offset), .interrupt(dma_start_int), .data(edata));

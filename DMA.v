@@ -18,15 +18,35 @@
 module DMA (
     input CLK, BG,
     input [4 * `WORD_SIZE - 1 : 0] edata,
-    input cmd,
-    output BR, READ,
+    input [2 * `WORD_SIZE - 1 : 0] cmd, // [ADDR, LEN]
+    output reg BR, READ,
     output [`WORD_SIZE - 1 : 0] addr, 
     output [4 * `WORD_SIZE - 1 : 0] data,
     output [1:0] offset,
     output interrupt);
 
-    /* Implement your own logic */
+   wire [`WORD_SIZE - 1 : 0] cmd_addr;
+   wire [`WORD_SIZE - 1 : 0] cmd_len;
+   assign cmd_addr = cmd[2 * `WORD_SIZE - 1 : `WORD_SIZE];
+   assign cmd_len  = cmd[    `WORD_SIZE - 1 : 0];
 
+   assign interrupt = !BR;
+
+   initial begin
+      BR <= 0;
+   end
+
+   always @(posedge CLK) begin
+      if (cmd != 0) begin
+         BR <= 1;
+      end
+
+      // TODO
+      if (BG) begin
+         #1000;
+         BR <= 0;
+      end
+   end
 endmodule
 
 

@@ -31,54 +31,60 @@ module datapath
     parameter BRANCH_PREDICTOR = `BPRED_SATURATION_COUNTER,
     parameter CACHE = 1)
    (input                      clk,
-    input                      reset_n,
-    input [1:0]                pc_src,
-    input                      i_or_d,
+    input                        reset_n,
+    input [1:0]                  pc_src,
+    input                        i_or_d,
 
     // See control_unit.v for docs for each control signals
 
     // ID control signals
-    input                      output_write,
+    input                        output_write,
 
     // EX control signals
-    input [3:0]                alu_op,
-    input                      alu_src_a,
-    input [1:0]                alu_src_b,
-    input                      alu_src_swap, 
-    input [1:0]                reg_dst,
-    input                      branch,
+    input [3:0]                  alu_op,
+    input                        alu_src_a,
+    input [1:0]                  alu_src_b,
+    input                        alu_src_swap, 
+    input [1:0]                  reg_dst,
+    input                        branch,
 
     // MEM control signals
     // input                      i_mem_read, 
-    input                      d_mem_read, 
-    input                      i_mem_write,
-    input                      d_mem_write,
-    input                      i_ready,
-    input                      i_input_ready,
-    input                      d_ready,
-    input [WORD_SIZE-1:0]      d_written_address,
+    input                        d_mem_read, 
+    input                        i_mem_write,
+    input                        d_mem_write,
+    input                        i_ready,
+    input                        i_input_ready,
+    input                        d_ready,
 
     // WB control signals
-    input                      reg_write,
-    input [1:0]                reg_write_src,
-    input                      halt_id,
+    input                        reg_write,
+    input [1:0]                  reg_write_src,
+    input                        halt_id,
 
-    output [WORD_SIZE-1:0]     i_address,
-    output [WORD_SIZE-1:0]     d_address,
-    output                     i_read,
-    output                     d_read,
-    output                     i_write,
-    output                     d_write,
-    inout [WORD_SIZE-1:0]      i_data,
-    inout [WORD_SIZE-1:0]      d_data,
-    output reg [WORD_SIZE-1:0] output_port,
-    output [3:0]               opcode,
-    output [5:0]               func_code,
-    output [2:0]               inst_type,
-    output                     is_halted, 
-    output [WORD_SIZE-1:0]     num_inst,
-    output reg [WORD_SIZE-1:0] num_branch, // number of branches encountered
-    output reg [WORD_SIZE-1:0] num_branch_miss // number of branch prediction miss
+    // DMA
+    input                        dma_begin,
+    input                        dma_end,
+    input                        bus_request,
+    output reg                   bus_granted,
+    output reg [2*WORD_SIZE-1:0] dma_cmd,
+
+    output [WORD_SIZE-1:0]       i_address,
+    output [WORD_SIZE-1:0]       d_address,
+    output                       i_read,
+    output                       d_read,
+    output                       i_write,
+    output                       d_write,
+    inout [WORD_SIZE-1:0]        i_data,
+    inout [WORD_SIZE-1:0]        d_data,
+    output reg [WORD_SIZE-1:0]   output_port,
+    output [3:0]                 opcode,
+    output [5:0]                 func_code,
+    output [2:0]                 inst_type,
+    output                       is_halted, 
+    output [WORD_SIZE-1:0]       num_inst,
+    output reg [WORD_SIZE-1:0]   num_branch, // number of branches encountered
+    output reg [WORD_SIZE-1:0]   num_branch_miss // number of branch prediction miss
 );
    //-------------------------------------------------------------------------//
    // Wires
@@ -124,6 +130,8 @@ module datapath
                                          // fetched instruction will not be discarded, and is a
                                          // branch instruction
 
+   wire                 d_cache_busy; // cache is handling read/write but is not ready yet
+
    // Unconditional branch prediction miss flag.  If branch prediction
    // is disabled, this is always set to 1.
    wire                 jump_miss;
@@ -146,6 +154,9 @@ module datapath
    // Pipeline registers
    //-------------------------------------------------------------------------//
    // don't forget to reset
+
+   // Global
+   reg                  interrupted; // save CPU interrupt state
 
    // unconditional latches
    reg [WORD_SIZE-1:0]  pc, pc_id, pc_ex, pc_mem, pc_wb; // program counter
@@ -251,10 +262,11 @@ module datapath
        .i_ready(i_ready),
        .i_input_ready(i_input_ready),
        .d_ready(d_ready),
-       .d_written_address(d_written_address),
+       .d_cache_busy(d_cache_busy),
        .rt_ex(rt_ex),
        .rt_mem(rt_mem),
        .rt_wb(rt_wb),
+       .bus_granted(bus_granted),
        .i_mem_read(i_mem_read),
        .bubblify_id(bubblify_id),
        .bubblify_ex(bubblify_ex),
@@ -291,8 +303,11 @@ module datapath
           .npc(npc_pred));
 
    //-------------------------------------------------------------------------//
-   // Per-stage wire connections
+   // Wire connections
    //-------------------------------------------------------------------------//
+
+   // Global
+   assign d_cache_busy = (d_read || d_write) && !d_ready;
 
    // IF stage
    // Connect npc to either BTB or pc+1 depending on the prediction policy
@@ -446,6 +461,8 @@ module datapath
          write_reg_ex <= 0; write_reg_mem <= 0; write_reg_wb <= 0;
          reg_write_ex <= 0; reg_write_mem <= 0; reg_write_wb <= 0;
          reg_write_src_ex <= 0; reg_write_src_mem <= 0; reg_write_src_wb <= 0;
+         interrupted <= 0;
+         bus_granted <= 0;
          output_port <= {WORD_SIZE{1'bz}}; // initially float
          num_inst_if <= 0;
          num_inst_id <= 0;
@@ -618,6 +635,36 @@ module datapath
             halt_wb          <= bubblify_mem ? 0 : halt_mem;
             reg_write_wb     <= bubblify_mem ? 0 : reg_write_mem;
             reg_write_src_wb <= bubblify_mem ? 0 : reg_write_src_mem;
+         end
+
+         //-------------------------------------------------------------------//
+         // I/O
+         //-------------------------------------------------------------------//
+
+         // DMA interrupt
+         if (dma_begin) begin
+            interrupted <= 1;
+            // Fixed address and length
+            dma_cmd[2*WORD_SIZE-1:WORD_SIZE] <= {WORD_SIZE{16'h1F4}};
+            dma_cmd[WORD_SIZE-1:0] <= {WORD_SIZE{16'd12}};
+         end
+         else begin
+            interrupted <= 0;
+            dma_cmd <= 0;
+         end
+
+         // Bus grant
+         //
+         // If a device interrupts CPU when the cache is doing a memory operation,
+         // it should finish the memory read/write and then grant the bus to the
+         // DMA controller.  Otherwise, as the DMA controller blocks the data bus
+         // under BG, the CPU would be stuck in that unfinished memory operation.
+         if (bus_request && !d_cache_busy) begin
+            bus_granted <= 1;
+         end
+
+         if (dma_end) begin
+            bus_granted <= 0;
          end
 
          //-------------------------------------------------------------------//

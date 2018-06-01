@@ -5,37 +5,42 @@
 `include "opcodes.v"
 
 module cpu(
-    input                    clk, 
-    input                    reset_n,
+    input                     clk, 
+    input                     reset_n,
 
     // Instruction memory interface
-    output                   i_readM, 
-    output                   i_writeM, 
-    output [`WORD_SIZE-1:0]  i_address, 
-    inout [4*`WORD_SIZE-1:0] i_dataM,
-    input                    i_readyM,
-    input                    i_input_readyM,
+    output                    i_readM, 
+    output                    i_writeM, 
+    output [`WORD_SIZE-1:0]   i_address, 
+    inout [4*`WORD_SIZE-1:0]  i_dataM,
+    input                     i_readyM,
+    input                     i_input_readyM,
 
     // Data memory interface
-    output                   d_readM, 
-    output                   d_writeM, 
-    output [`WORD_SIZE-1:0]  d_address, 
-    inout [4*`WORD_SIZE-1:0] d_dataM,
-    input                    d_readyM,
-    input                    d_input_readyM,
-    input                    d_doneM,
-    input                    d_next_ready,
-    input [`WORD_SIZE-1:0]   d_written_address,
+    output                    d_readM, 
+    output                    d_writeM, 
+    output [`WORD_SIZE-1:0]   d_address, 
+    inout [4*`WORD_SIZE-1:0]  d_dataM,
+    input                     d_readyM,
+    input                     d_input_readyM,
+    input                     d_doneM,
 
-    output [`WORD_SIZE-1:0]  num_inst, 
-    output [`WORD_SIZE-1:0]  num_branch, 
-    output [`WORD_SIZE-1:0]  num_branch_miss, 
-    output [`WORD_SIZE-1:0]  num_icache_access, 
-    output [`WORD_SIZE-1:0]  num_icache_miss,
-    output [`WORD_SIZE-1:0]  num_dcache_access, 
-    output [`WORD_SIZE-1:0]  num_dcache_miss,
-    output [`WORD_SIZE-1:0]  output_port,
-    output                   is_halted
+    // DMA
+    input                     dma_begin,
+    input                     dma_end,
+    input                     bus_request,
+    output                    bus_granted,
+    output [2*`WORD_SIZE-1:0] dma_cmd,
+
+    output [`WORD_SIZE-1:0]   num_inst, 
+    output [`WORD_SIZE-1:0]   num_branch, 
+    output [`WORD_SIZE-1:0]   num_branch_miss, 
+    output [`WORD_SIZE-1:0]   num_icache_access, 
+    output [`WORD_SIZE-1:0]   num_icache_miss,
+    output [`WORD_SIZE-1:0]   num_dcache_access, 
+    output [`WORD_SIZE-1:0]   num_dcache_miss,
+    output [`WORD_SIZE-1:0]   output_port,
+    output                    is_halted
 );
    //===-------------------------------------------------------------------===//
    // CPU feature configurations
@@ -162,10 +167,14 @@ module cpu(
        .i_ready (i_ready),
        .i_input_ready (i_input_readyM),
        .d_ready (d_ready),
-       .d_written_address (d_written_address),
        .reg_write (reg_write),
        .reg_write_src (reg_write_src),
        .halt_id(halt_id),
+       .dma_begin(dma_begin),
+       .dma_end(dma_end),
+       .bus_request(bus_request),
+       .bus_granted(bus_granted),
+       .dma_cmd(dma_cmd),
        .i_address (i_address),
        .d_address (d_address),
        .i_read (i_read),
@@ -188,6 +197,7 @@ module cpu(
            .BYPASS(!CACHE))
    ICache (.clk(clk),
            .reset_n(reset_n),
+           .bus_granted(1'b0),
            .readC(i_read),
            .writeC(i_write),
            .input_readyM(i_input_readyM),
@@ -206,6 +216,7 @@ module cpu(
            .BYPASS(!CACHE))
    DCache (.clk(clk),
            .reset_n(reset_n),
+           .bus_granted(bus_granted),
            .readC(d_read),
            .writeC(d_write),
            .input_readyM(d_input_readyM),

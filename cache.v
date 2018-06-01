@@ -7,8 +7,9 @@ module cache
   #(parameter WORD_SIZE = `WORD_SIZE,
     parameter READ_SIZE = 4*`WORD_SIZE,
     parameter BYPASS = 1)
-   (input                  clk,
+   (input                      clk,
     input                      reset_n,
+    input                      bus_granted,
     input                      readC,
     input                      writeC,
     input                      input_readyM,
@@ -76,11 +77,11 @@ module cache
       if (!BYPASS) begin
          // Memory read: when it's a read miss, or when it's a write miss and the
          // container block is not loaded yet.
-         readM = ((readC && !hit) || (writeC && !hit && !block_ready)) && !input_readyM;
+         readM = ((readC && !hit) || (writeC && !hit && !block_ready)) && !input_readyM && !bus_granted;
 
          // Memory write: when it's a write hit, or when it's a write miss but the
          // container block is loaded by former readM.
-         writeM = writeC && (hit || block_ready) && !doneM;
+         writeM = writeC && (hit || block_ready) && !doneM && !bus_granted;
 
          // Mark operation finish.
          //
@@ -89,8 +90,8 @@ module cache
          readyC = (readC && hit) || (writeC && (doneM && !input_readyM));
       end
       else begin
-         readM = readC && !input_readyM;
-         writeM = writeC && !doneM;
+         readM = readC && !input_readyM && !bus_granted;
+         writeM = writeC && !doneM && !bus_granted;
          readyC = (readC && input_readyM) || (writeC && (doneM && !input_readyM));
       end
    end

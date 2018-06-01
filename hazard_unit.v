@@ -7,43 +7,44 @@ module hazard_unit
   #(parameter RF_SELF_FORWARDING = 1,
     parameter DATA_FORWARDING = 1,
     parameter CACHE = 1)
-   (input                  clk,
-    input                  reset_n,
-    input [3:0]            opcode,
-    input [2:0]            inst_type,
-    input [5:0]            func_code,
-    input                  jump_miss, // misprediction of unconditional branch
-    input                  cond_branch_miss, // misprediction of conditional branch
-    input [1:0]            rs_id, 
-    input [1:0]            rt_id, 
-    input                  reg_write_ex,
-    input                  reg_write_mem,
-    input                  reg_write_wb,
-    input [1:0]            write_reg_ex, 
-    input [1:0]            write_reg_mem, 
-    input [1:0]            write_reg_wb, 
-    input                  d_mem_read_ex,
-    input                  d_mem_read_mem,
-    input                  d_mem_read_wb,
-    input                  d_mem_write_mem,
-    input                  d_mem_write_wb,
-    input                  i_ready,
-    input                  i_input_ready,
-    input                  d_ready,
-    input [`WORD_SIZE-1:0] d_written_address,
-    input [1:0]            rt_ex, 
-    input [1:0]            rt_mem,
-    input [1:0]            rt_wb,
-    output reg             i_mem_read,
-    output reg             bubblify_id, // reset all control signals of ID to zero
-    output reg             bubblify_ex, // reset all control signals of EX to zero
-    output reg             bubblify_mem, // reset all control signals of MEM to zero
-    output reg             flush_if, // reset IR to nop
-    output reg             pc_write,
-    output reg             ir_write,
-    output reg             freeze_ex,
-    output reg             freeze_mem,
-    output reg             incr_num_inst 
+   (input       clk,
+    input       reset_n,
+    input [3:0] opcode,
+    input [2:0] inst_type,
+    input [5:0] func_code,
+    input       jump_miss, // misprediction of unconditional branch
+    input       cond_branch_miss, // misprediction of conditional branch
+    input [1:0] rs_id, 
+    input [1:0] rt_id, 
+    input       reg_write_ex,
+    input       reg_write_mem,
+    input       reg_write_wb,
+    input [1:0] write_reg_ex, 
+    input [1:0] write_reg_mem, 
+    input [1:0] write_reg_wb, 
+    input       d_mem_read_ex,
+    input       d_mem_read_mem,
+    input       d_mem_read_wb,
+    input       d_mem_write_mem,
+    input       d_mem_write_wb,
+    input       i_ready,
+    input       i_input_ready,
+    input       d_ready,
+    input       d_cache_busy,
+    input [1:0] rt_ex, 
+    input [1:0] rt_mem,
+    input [1:0] rt_wb,
+    input       bus_granted,
+    output reg  i_mem_read,
+    output reg  bubblify_id, // reset all control signals of ID to zero
+    output reg  bubblify_ex, // reset all control signals of EX to zero
+    output reg  bubblify_mem, // reset all control signals of MEM to zero
+    output reg  flush_if, // reset IR to nop
+    output reg  pc_write,
+    output reg  ir_write,
+    output reg  freeze_ex,
+    output reg  freeze_mem,
+    output reg  incr_num_inst 
 );
    reg          use_rs, use_rs_at_id, use_rt;
 
@@ -88,7 +89,7 @@ module hazard_unit
       // finished, any access to this data becomes RAW on the writeback
       // register, which is handled by forwarding (or stall condition check from
       // the ID).
-      if ((d_mem_read_mem || d_mem_write_mem) && (!d_ready /*|| d_mem_write_wb*/)) begin
+      if (d_cache_busy) begin
          pc_write = 0;
          ir_write = 0;
          freeze_ex = 1;
@@ -174,6 +175,17 @@ module hazard_unit
          end
       end
 
+      // DMA bus steal: stall any cache miss operation while the bus is granted
+      // to the DMA.
+      // if (bus_granted && d_cache_busy) begin
+      //    pc_write = 0;
+      //    ir_write = 0;
+      //    flush_if = 0;
+      //    freeze_ex = 1;
+      //    freeze_mem = 1;
+      //    bubblify_mem = 1;
+      // end
+
       // don't increase num_inst in any kind of hazard
       incr_num_inst = !(bubblify_id || bubblify_mem || !pc_write || flush_if);
    end // always @ *
@@ -183,8 +195,7 @@ module hazard_unit
    always @(posedge clk) begin
       if (!reset_n) begin
          stall <= 0;
-      end
-      else begin
+      end else begin
          if (!i_ready && !(cond_branch_miss || jump_miss)) begin
             stall <= stall + 1;
          end

@@ -10,7 +10,7 @@
 `define DATA_SIZE 3
 `define DEVICE_BIT_LEN 2
 
-`define FIRE_TIME 2600
+`define FIRE_TIME 45500 // 2600
 `define INTTERRUPT_DURATION 100
 
 module external_device(
@@ -51,7 +51,7 @@ module external_device(
       #(`INTTERRUPT_DURATION);
       interrupt <=  0;
       
-      $finish;
+      // $finish;
   end
 
   /* Data to be send */
