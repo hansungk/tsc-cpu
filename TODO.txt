@@ -1,0 +1,7 @@
+* DONE CPU stop/resume on interrupt
+* TODO Write to memory on DMA BG
+
+* Changes
+
+** hazard_unit.v
+- Added port dma_begin, dma_end
