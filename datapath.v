@@ -98,7 +98,7 @@ module datapath
 
    // Hazard signals
    wire                 i_mem_read; // FIXME
-   wire                 pc_write, pc_write_cond;
+   wire                 pc_write;
    wire                 ir_write;
    wire                 bubblify_id; // reset all control signals to zero
    wire                 bubblify_ex;
@@ -662,10 +662,14 @@ module datapath
          if (bus_request && !d_cache_busy) begin
             bus_granted <= 1;
          end
+         // // Bus reclaim
+         // //
+         // // If the DMA does not request for bus anymore, reclaim it as fast as
+         // // possible.
 
-         if (dma_end) begin
-            bus_granted <= 0;
-         end
+         // if (!bus_request) begin
+         //    bus_granted <= 0;
+         // end
 
          //-------------------------------------------------------------------//
          // Debug info
@@ -701,6 +705,12 @@ module datapath
          //       num_inst_if_saved_buffer <= {WORD_SIZE{1'b1}};
          //    end
          // end
+      end
+   end // always @ (posedge clk)
+
+   always @(negedge bus_request) begin
+      if (!bus_request) begin
+         bus_granted <= 0;
       end
    end
 endmodule

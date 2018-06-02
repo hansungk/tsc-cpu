@@ -11,7 +11,7 @@ module cpu(
     // Instruction memory interface
     output                    i_readM, 
     output                    i_writeM, 
-    output [`WORD_SIZE-1:0]   i_address, 
+    output [`WORD_SIZE-1:0]   i_addressM, 
     inout [4*`WORD_SIZE-1:0]  i_dataM,
     input                     i_readyM,
     input                     i_input_readyM,
@@ -19,7 +19,7 @@ module cpu(
     // Data memory interface
     output                    d_readM, 
     output                    d_writeM, 
-    output [`WORD_SIZE-1:0]   d_address, 
+    output [`WORD_SIZE-1:0]   d_addressM, 
     inout [4*`WORD_SIZE-1:0]  d_dataM,
     input                     d_readyM,
     input                     d_input_readyM,
@@ -85,6 +85,8 @@ module cpu(
    wire        alu_src_swap;
    wire [3:0]  alu_op;
    wire        halt_id;
+   wire [`WORD_SIZE-1:0] i_address;
+   wire [`WORD_SIZE-1:0] d_address;
    wire        i_ready;
    wire        i_readyC;
    wire        d_ready;
@@ -205,6 +207,7 @@ module cpu(
            .address(i_address),
            .data(i_dataC),
            .dataM(i_dataM),
+           .addressM(i_addressM),
            .readM(i_readM_from_cache),
            .writeM(i_writeM_from_cache),
            .readyC(i_readyC),
@@ -224,6 +227,7 @@ module cpu(
            .address(d_address),
            .data(d_dataC),
            .dataM(d_dataM),
+           .addressM(d_addressM),
            .readM(d_readM_from_cache),
            .writeM(d_writeM_from_cache),
            .readyC(d_readyC),

@@ -1,3 +1,5 @@
+`timescale 1ns/1ns
+
 `define WORD_SIZE 16
 /*************************************************
 * DMA module (DMA.v)
@@ -16,36 +18,74 @@
 *************************************************/
 
 module DMA (
-    input CLK, BG,
-    input [4 * `WORD_SIZE - 1 : 0] edata,
-    input [2 * `WORD_SIZE - 1 : 0] cmd, // [ADDR, LEN]
-    output reg BR, READ,
-    output [`WORD_SIZE - 1 : 0] addr, 
+    input                           CLK, BG,
+    input [4 * `WORD_SIZE - 1 : 0]  edata,
+    input [2 * `WORD_SIZE - 1 : 0]  cmd, // [ADDR, LEN]
+    input                           doneM, // ADDED: write complete signal from memory
+    output reg                      BR,
+    output                          WRITE,
+    output [`WORD_SIZE - 1 : 0]     addr, 
     output [4 * `WORD_SIZE - 1 : 0] data,
-    output [1:0] offset,
-    output interrupt);
+    output reg [1:0]                offset,
+    output reg                      interrupt);
+
+   // Buffer to store command (like IR)
+   reg [2 * `WORD_SIZE - 1 : 0]     cmd_reg;
 
    wire [`WORD_SIZE - 1 : 0] cmd_addr;
    wire [`WORD_SIZE - 1 : 0] cmd_len;
-   assign cmd_addr = cmd[2 * `WORD_SIZE - 1 : `WORD_SIZE];
-   assign cmd_len  = cmd[    `WORD_SIZE - 1 : 0];
+   assign cmd_addr = cmd_reg[2 * `WORD_SIZE - 1 : `WORD_SIZE] + 4 * offset;
+   assign cmd_len  = cmd_reg[    `WORD_SIZE - 1 : 0];
 
-   assign interrupt = !BR;
+   assign addr = BG ? cmd_addr : 'bz;
+   assign data = BG ? edata : 'bz;
 
    initial begin
+      cmd_reg <= 'bz;
+      offset <= 2'b0;
       BR <= 0;
+      interrupt <= 0;
    end
+
+   assign WRITE = BR && BG && !doneM;
 
    always @(posedge CLK) begin
       if (cmd != 0) begin
          BR <= 1;
+         cmd_reg <= cmd;
       end
 
-      // TODO
       if (BG) begin
-         #1000;
-         BR <= 0;
+         // Increase offset after each write
+         if (doneM) begin
+            if (offset < 2) begin
+               offset <= offset + 1;
+               // cycle stealing
+               BR <= 0;
+            end else if (offset == 2) begin
+               // Operation finish, return bus to CPU
+               offset <= 0;
+               BR <= 0;
+            end
+         end
+      end // if (BG)
+
+      if (offset != 0 && !doneM) begin
+         BR <= 1;
       end
+
+      // Reset after operation finish
+      if (interrupt) begin
+         cmd_reg <= 'bz;
+         interrupt <= 0;
+      end
+   end // always @ (posedge CLK)
+
+   // Interrupt dma_end to CPU as soon as the CPU reclaims bus
+   always @(negedge BG) begin
+      // set interrupt only when it's over
+      if (offset == 0)
+        interrupt <= 1;
    end
 endmodule
 

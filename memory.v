@@ -327,7 +327,6 @@ module Memory
                else begin
                   i_readM_temp <= 0;
                   i_writeM_temp <= 0;
-                  i_address_temp <= 0;
                end
             end
             else begin
@@ -386,7 +385,7 @@ module Memory
                d_input_readyM <= 0;
             end
             
-            if (d_count == 0) begin
+            if (d_count == 0/* && !d_input_readyM && !d_doneM*/) begin
                if (d_readM || d_writeM) begin
                   d_count <= LATENCY - 2;
                   d_readM_temp <= d_readM;
@@ -397,7 +396,6 @@ module Memory
                else begin
                   d_readM_temp <= 0;
                   d_writeM_temp <= 0;
-                  d_address_temp <= 0;
                end
             end
             else begin

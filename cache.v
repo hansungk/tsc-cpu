@@ -18,6 +18,7 @@ module cache
     inout [WORD_SIZE-1:0]      data, // data bus to the processor
     inout [READ_SIZE-1:0]      dataM, // data bus to the memory
     // issue memory access for cache misses
+    output [WORD_SIZE-1:0]     addressM,
     output reg                 readM,
     output reg                 writeM,
     output reg                 readyC,
@@ -38,7 +39,9 @@ module cache
    reg [3:0]              dirty;
 
    reg [READ_SIZE-1:0]    temp_block;
-   reg                    block_ready;                    
+   reg                    block_ready;
+
+   reg                    done;
 
    // Logic
 
@@ -62,11 +65,15 @@ module cache
    // Cache <-> memory data bus: only input on cache/memory write
    wire [READ_SIZE-1:0]   mask;
    assign mask = ~({WORD_SIZE{1'b1}} << (block * WORD_SIZE));
-   assign dataM = !BYPASS ?
+   // Only use address bus when the bus is not used by DMA
+   assign addressM = !bus_granted ? address : {WORD_SIZE{1'bz}};
+   assign dataM = !bus_granted ?
+                  !BYPASS ?
                   ((writeC && hit) ? (data_bank[index] & mask) | (data << (block * WORD_SIZE)) :
                    (writeC && block_ready) ? (temp_block & mask) | (data << (block * WORD_SIZE)) :
                    {READ_SIZE{1'bz}}) :
-                  ((writeM) ? data : {WORD_SIZE{1'bz}});
+                  ((writeM) ? data : {READ_SIZE{1'bz}}) :
+                  {READ_SIZE{1'bz}};
 
    integer i;
 
@@ -87,12 +94,12 @@ module cache
          //
          // Cache read finishes when the block is read in and exhibits a cache hit.
          // Cache write finishes when the final writeM finishes.
-         readyC = (readC && hit) || (writeC && (doneM && !input_readyM));
+         readyC = (readC && hit) || (writeC && (doneM && !input_readyM && !bus_granted));
       end
       else begin
          readM = readC && !input_readyM && !bus_granted;
          writeM = writeC && !doneM && !bus_granted;
-         readyC = (readC && input_readyM) || (writeC && (doneM && !input_readyM));
+         readyC = (readC && input_readyM) || (writeC && (doneM && !input_readyM && !bus_granted));
       end
    end
 
@@ -123,9 +130,11 @@ module cache
                num_cache_miss <= num_cache_miss + 1;
             end
          end
-         if (writeC) begin
+         if (writeC && !bus_granted) begin
             // Write hit: update both cache and memory (memory handled above)
-            if (hit) begin
+            // For a write-through cache, cache write should be altogether
+            // prohibited under bus granted.
+            if (hit && !bus_granted) begin
                tag_bank[index] <= tag;
                data_bank[index] <= dataM;
                valid[index] <= 1;

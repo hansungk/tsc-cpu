@@ -195,7 +195,7 @@ FIBRECUR:	SWD	$2, $3, 0 ; #b8
 		ADI	$0, $1, -1
 		JAL	FIB                 ; #c0
 		LWD	$1, $3, -1
-		LWD	$2, $3, -2
+		LWD	$2, $3, -2          ; #c2
 		ADD	$0, $0, $1
 		ADI	$3, $3, -2
 		JPR	$2 ; #c5

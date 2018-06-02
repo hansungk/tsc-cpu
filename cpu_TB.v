@@ -46,7 +46,7 @@ module cpu_TB();
 	wire [2 * `WORD_SIZE - 1 : 0] cmd;
 	wire BR;
 	wire [4 * `WORD_SIZE - 1 : 0] edata;
-	wire dma_READ;
+	wire dma_WRITE;
 	wire [`WORD_SIZE - 1 : 0] dma_addr;
 	wire [`WORD_SIZE * 4 - 1 : 0] dma_data;
 	wire [1:0] dma_offset;
@@ -60,13 +60,13 @@ module cpu_TB();
         .reset_n(reset_n),
         .i_readM(i_readM),
         .i_writeM(i_writeM),
-        .i_address(i_address),
+        .i_addressM(i_address),
         .i_dataM(i_data),
         .i_readyM(i_readyM),
         .i_input_readyM(i_input_readyM),
         .d_readM(d_readM),
         .d_writeM(d_writeM),
-        .d_address(d_address),
+        .d_addressM(d_address),
         .d_dataM(d_data),
         .d_readyM(d_readyM),
         .d_input_readyM(d_input_readyM),
@@ -98,7 +98,7 @@ module cpu_TB();
         .i_readyM(i_readyM),
         .i_input_readyM(i_input_readyM),
         .d_readM(d_readM),
-        .d_writeM(d_writeM),
+        .d_writeM(d_writeM || dma_WRITE),
         .d_address(d_address),
         .d_data(d_data),
         .d_readyM(d_readyM),
@@ -106,8 +106,8 @@ module cpu_TB();
         .d_doneM(d_doneM),
         .d_written_address(d_written_address));
 
-	DMA DMA(.CLK(clk), .BG(BG),  .edata(edata), .cmd(cmd), .BR(BR), .READ(dma_READ),
-	    .addr(dma_addr), .data(dma_data), .offset(dma_offset), .interrupt(dma_end_int));
+	DMA DMA(.CLK(clk), .BG(BG),  .edata(edata), .cmd(cmd), .doneM(d_doneM), .BR(BR), .WRITE(dma_WRITE),
+	    .addr(d_address/*dma_addr*/), .data(d_data/*dma_data*/), .offset(dma_offset), .interrupt(dma_end_int));
 
 	external_device edevice(.offset(dma_offset), .interrupt(dma_start_int), .data(edata));
 

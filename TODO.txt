@@ -1,7 +1,12 @@
 * DONE CPU stop/resume on interrupt
 * TODO Write to memory on DMA BG
+* TODO misc
+** TODO Rename doneM
 
 * Changes
+
+** dma.v
+- Added port doneM, renamed READ -> WRITE
 
 ** hazard_unit.v
 - Added port dma_begin, dma_end
