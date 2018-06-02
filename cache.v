@@ -114,6 +114,7 @@ module cache
             block_ready <= 0;
             num_cache_miss <= 0;
             num_cache_access <= 0;
+            done <= 0;
          end
       end
       else begin
@@ -131,6 +132,8 @@ module cache
             end
          end
          if (writeC && !bus_granted) begin
+            done <= 0;
+
             // Write hit: update both cache and memory (memory handled above)
             // For a write-through cache, cache write should be altogether
             // prohibited under bus granted.
@@ -147,6 +150,9 @@ module cache
                block_ready <= 1;
                num_cache_miss <= num_cache_miss + 1;
             end
+            // if (doneM && !input_readyM) begin
+            //    done <= 1;
+            // end
          end
 
          // Every time an operation ends, reset block_ready and increment

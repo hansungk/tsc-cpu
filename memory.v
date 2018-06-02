@@ -386,6 +386,9 @@ module Memory
             end
             
             if (d_count == 0/* && !d_input_readyM && !d_doneM*/) begin
+               $display("0x1F4: 0x%0x", memory['h1F4]);
+               $display("0x1F8: 0x%0x", memory['h1F8]);
+               $display("0x1Fc: 0x%0x", memory['h1FC]);
                if (d_readM || d_writeM) begin
                   d_count <= LATENCY - 2;
                   d_readM_temp <= d_readM;

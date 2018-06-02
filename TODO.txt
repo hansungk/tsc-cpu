@@ -1,5 +1,7 @@
-* DONE CPU stop/resume on interrupt
-* TODO Write to memory on DMA BG
+-*- mode:org -*-
+
+* DONE Cycle stealing
+* TODO Fix double cache write on I-cache miss & D-cache miss overlap
 * TODO misc
 ** TODO Rename doneM
 
@@ -7,6 +9,7 @@
 
 ** dma.v
 - Added port doneM, renamed READ -> WRITE
+- Cycle stealing: disable BR for just 1 cycle
 
 ** hazard_unit.v
 - Added port dma_begin, dma_end

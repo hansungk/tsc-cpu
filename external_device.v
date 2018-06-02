@@ -10,7 +10,7 @@
 `define DATA_SIZE 3
 `define DEVICE_BIT_LEN 2
 
-`define FIRE_TIME 88600 // 2600
+`define FIRE_TIME 89600 // steal: 89600, default: 2600
 `define INTTERRUPT_DURATION 100
 
 module external_device(

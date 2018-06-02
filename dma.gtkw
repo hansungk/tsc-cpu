@@ -1,22 +1,22 @@
 [*]
-[*] GTKWave Analyzer v3.3.89 (w)1999-2018 BSI
-[*] Sat Jun  2 04:41:56 2018
+[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
+[*] Sat Jun  2 16:45:52 2018
 [*]
-[dumpfile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/pipelined.vcd"
-[dumpfile_mtime] "Sat Jun  2 04:40:01 2018"
-[dumpfile_size] 595384
-[savefile] "/Users/stephen/Documents/SNU/Computer-Architecture/tsc-cpu/dma.gtkw"
-[timestart] 43448000
-[size] 1440 855
+[dumpfile] "/home/stephen/pipelined/pipelined.vcd"
+[dumpfile_mtime] "Sat Jun  2 16:32:39 2018"
+[dumpfile_size] 2203351
+[savefile] "/home/stephen/pipelined/dma.gtkw"
+[timestart] 131031000
+[size] 3840 2029
 [pos] -1 -1
-*-20.725235 47183000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-20.725235 143188000 1201600 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] cpu_TB.
 [treeopen] cpu_TB.UUT.
 [treeopen] cpu_TB.UUT.DP.
-[sst_width] 193
-[signals_width] 322
+[sst_width] 360
+[signals_width] 620
 [sst_expanded] 1
-[sst_vpaned_height] 375
+[sst_vpaned_height] 839
 @22
 cpu_TB.Passed[15:0]
 @28
@@ -34,9 +34,7 @@ cpu_TB.NUUT.d_data[63:0]
 cpu_TB.NUUT.d_data_temp[63:0]
 @28
 cpu_TB.NUUT.d_readM
-@29
 cpu_TB.NUUT.d_input_readyM
-@28
 cpu_TB.NUUT.d_writeM
 cpu_TB.NUUT.d_doneM
 cpu_TB.NUUT.d_readyM
@@ -72,6 +70,9 @@ cpu_TB.UUT.DCache.readM
 cpu_TB.UUT.DCache.input_readyM
 cpu_TB.UUT.DCache.writeC
 cpu_TB.UUT.DCache.writeM
+@29
+cpu_TB.UUT.DCache.doneM
+@28
 cpu_TB.UUT.DCache.hit
 cpu_TB.UUT.DCache.readyC
 @200
@@ -79,8 +80,6 @@ cpu_TB.UUT.DCache.readyC
 @28
 cpu_TB.edevice.interrupt
 cpu_TB.DMA.offset[1:0]
-cpu_TB.DMA.WRITE
-cpu_TB.DMA.doneM
 @22
 cpu_TB.DMA.edata[63:0]
 @28
