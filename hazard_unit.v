@@ -34,7 +34,6 @@ module hazard_unit
     input [1:0] rt_ex, 
     input [1:0] rt_mem,
     input [1:0] rt_wb,
-    input       bus_granted,
     output reg  i_mem_read,
     output reg  bubblify_id, // reset all control signals of ID to zero
     output reg  bubblify_ex, // reset all control signals of EX to zero
@@ -175,17 +174,6 @@ module hazard_unit
          end
       end
 
-      // DMA bus steal: stall any cache miss operation while the bus is granted
-      // to the DMA.
-      // if (bus_granted && d_cache_busy) begin
-      //    pc_write = 0;
-      //    ir_write = 0;
-      //    flush_if = 0;
-      //    freeze_ex = 1;
-      //    freeze_mem = 1;
-      //    bubblify_mem = 1;
-      // end
-
       // don't increase num_inst in any kind of hazard
       incr_num_inst = !(bubblify_id || bubblify_mem || !pc_write || flush_if);
    end // always @ *
@@ -201,9 +189,6 @@ module hazard_unit
          end
          else
            stall <= 0;
-
-         if (!i_ready && stall)
-           i_mem_read <= 1;
       end
    end
 endmodule // hazard_unit

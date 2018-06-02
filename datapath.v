@@ -130,7 +130,7 @@ module datapath
                                          // fetched instruction will not be discarded, and is a
                                          // branch instruction
 
-   wire                 d_cache_busy; // cache is handling read/write but is not ready yet
+   wire                 d_cache_busy; // cache is occupying memory bus
 
    // Unconditional branch prediction miss flag.  If branch prediction
    // is disabled, this is always set to 1.
@@ -266,7 +266,6 @@ module datapath
        .rt_ex(rt_ex),
        .rt_mem(rt_mem),
        .rt_wb(rt_wb),
-       .bus_granted(bus_granted),
        .i_mem_read(i_mem_read),
        .bubblify_id(bubblify_id),
        .bubblify_ex(bubblify_ex),
