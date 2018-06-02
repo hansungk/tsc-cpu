@@ -58,11 +58,12 @@ module DMA (
       if (BG) begin
          // Increase offset after each write
          if (doneM) begin
-            if (offset < 2) begin
+            // cmd_len = 12 (words), cmd_len >> 2 = 4 (writes)
+            if (offset < (cmd_len >> 2) - 1) begin
                offset <= offset + 1;
-               // cycle stealing
+               // Cycle stealing: disable BR after every write.
                BR <= 0;
-            end else if (offset == 2) begin
+            end else if (offset == (cmd_len >> 2) - 1) begin
                // Operation finish, return bus to CPU
                offset <= 0;
                BR <= 0;
@@ -70,7 +71,10 @@ module DMA (
          end
       end // if (BG)
 
-      if (offset != 0 && !doneM) begin
+      // Cycle stealing: set BR back on after 1 cycle, provided there are
+      // remaining data to be written.  The bus grant logic of the CPU will
+      // handle the steal by itself.
+      if (!BR && offset != 0) begin
          BR <= 1;
       end
 

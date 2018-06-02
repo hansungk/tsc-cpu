@@ -661,14 +661,14 @@ module datapath
          if (bus_request && !d_cache_busy) begin
             bus_granted <= 1;
          end
-         // // Bus reclaim
-         // //
-         // // If the DMA does not request for bus anymore, reclaim it as fast as
-         // // possible.
 
-         // if (!bus_request) begin
-         //    bus_granted <= 0;
-         // end
+         // Bus reclaim
+         //
+         // If the DMA does not request for bus anymore, reclaim it as fast as
+         // possible.
+         if (!bus_request) begin
+            bus_granted <= 0;
+         end
 
          //-------------------------------------------------------------------//
          // Debug info
@@ -706,10 +706,4 @@ module datapath
          // end
       end
    end // always @ (posedge clk)
-
-   always @(negedge bus_request) begin
-      if (!bus_request) begin
-         bus_granted <= 0;
-      end
-   end
 endmodule
