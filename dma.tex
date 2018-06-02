@@ -1,0 +1,85 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[parfill]{parskip}
+\usepackage{newtxtext}
+\usepackage{booktabs}
+\usepackage{fancyvrb}
+
+\title{DMA \\
+\large 18-1 ECE 322 Computer Organization, Lab 08}
+\author{Hansung Kim \\ 2014-16824}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Implement a DMA controller on top of the previous CPU implementation.
+Learn how CPU cooperates with DMA to achieve better performance.
+
+\section{Design}
+
+The key point of this design is the use of a signal called
+\verb|d_cache_busy| that indicates whether the cache is occupying the
+data and address bus, i.e. handling cache miss.  The addition of this
+single signal simplifies the logic of granting of the bus to the DMA.
+
+\subsection{Bus grant and reclaim}
+
+The CPU can grant the bus access to the DMA whenever the cache is not
+handling miss, i.e. \verb|d_cache_busy == 0|.  Conversely, if the DMA
+stops requesting for the bus, it is guaranteed that the bus is vacant
+and the CPU can reclaim the access immediately.  Therefore, the code
+for the bus grant and reclaim logic is simply as follows:
+
+\begin{figure}[ht]
+  \centering
+  \begin{BVerbatim}
+  if (bus_request && !d_cache_busy) begin
+     bus_granted <= 1;
+  end
+
+  if (!bus_request) begin
+     bus_granted <= 0;
+  end
+  \end{BVerbatim}
+  \caption{Bus grant and reclaim logic using \texttt{d\_cache\_busy}}
+  \label{fig:bus-logic}
+\end{figure}
+
+where \verb|d_cache_busy| is produced by testing if the cache is being
+read or write but its value is not ready, i.e.  \texttt{(d\_readC OR
+  d\_writeC) \&\& !d\_readyC}.
+
+\subsection{Cycle stealing}
+The DMA cycle stealing of the CPU can be implemented easily with
+little modification.  After each memory write of 4 words, the DMA sets
+\verb|bus_request| to zero for exactly one cycle.  This causes the CPU
+to retry any currently blocked memory operation in that single cycle.
+If there were any, the operation will set \verb|d_cache_busy| on,
+delaying the \verb|bus_granted| to go up until the operation is
+finished.  If there were no blocked memory operation, the logic in
+Figure \ref{fig:bus-logic} would set \verb|bus_granted| back on
+immediately.  Therefore, the Figure \ref{fig:bus-logic} logic is
+capable of handling cycle stealing by itself.
+
+\subsection{Changes to the cache}
+The cache is modified to not issue any memory read/write command when
+the bus is granted.  Its ``ready'' state should also remain false for
+the whole time span of bus grant.  Thus, the \verb|readM|,
+\verb|writeM| and \verb|readyC| signal is additionally logical-ANDed
+with \verb|!bus_granted|, which effectively no-ops the cache when the
+bus is granted to the DMA.
+
+\subsection{Changes to the hazard unit}
+The hazard unit stalls the entire pipeline on \verb|d_cache_busy|.
+This single check remains to be enough for handling both the D-cache
+miss and DMA bus block, as \verb|d_cache_busy| will be set to zero in
+both cases.  Thus, the hazard unit does not require any modification
+from the cache implementation (aside from the variable renaming).
+
+\section{Implementation}
+\section{Discussion}
+\section{Conclusion}
+
+\end{document}
