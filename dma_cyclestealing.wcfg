@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="cpu_TB_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="cpu_TB" />
+            <top_module name="glbl" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0fs"></ZoomStartTime>
+      <ZoomEndTime time="9154705884fs"></ZoomEndTime>
+      <Cursor1Time time="86928756000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="148"></NameColumnWidth>
+      <ValueColumnWidth column_width="56"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="11" />
+   <wvobject fp_name="/cpu_TB/reset_n" type="logic">
+      <obj_property name="ElementShortName">reset_n</obj_property>
+      <obj_property name="ObjectShortName">reset_n</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/d_address" type="array">
+      <obj_property name="ElementShortName">d_address[15:0]</obj_property>
+      <obj_property name="ObjectShortName">d_address[15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/d_data" type="array">
+      <obj_property name="ElementShortName">d_data[63:0]</obj_property>
+      <obj_property name="ObjectShortName">d_data[63:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/NUUT/i_readM" type="logic">
+      <obj_property name="ElementShortName">i_readM</obj_property>
+      <obj_property name="ObjectShortName">i_readM</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/NUUT/i_input_readyM" type="logic">
+      <obj_property name="ElementShortName">i_input_readyM</obj_property>
+      <obj_property name="ObjectShortName">i_input_readyM</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/d_readM" type="logic">
+      <obj_property name="ElementShortName">d_readM</obj_property>
+      <obj_property name="ObjectShortName">d_readM</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/d_writeM" type="logic">
+      <obj_property name="ElementShortName">d_writeM</obj_property>
+      <obj_property name="ObjectShortName">d_writeM</obj_property>
+   </wvobject>
+   <wvobject fp_name="/cpu_TB/UUT/DP/pc" type="array">
+      <obj_property name="ElementShortName">pc[15:0]</obj_property>
+      <obj_property name="ObjectShortName">pc[15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="group51" type="group">
+      <obj_property name="label">DCache</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/cpu_TB/UUT/DCache/readC" type="logic">
+         <obj_property name="ElementShortName">readC</obj_property>
+         <obj_property name="ObjectShortName">readC</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/UUT/DCache/readM" type="logic">
+         <obj_property name="ElementShortName">readM</obj_property>
+         <obj_property name="ObjectShortName">readM</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/UUT/DCache/writeC" type="logic">
+         <obj_property name="ElementShortName">writeC</obj_property>
+         <obj_property name="ObjectShortName">writeC</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/UUT/DCache/writeM" type="logic">
+         <obj_property name="ElementShortName">writeM</obj_property>
+         <obj_property name="ObjectShortName">writeM</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/UUT/DCache/readyC" type="logic">
+         <obj_property name="ElementShortName">readyC</obj_property>
+         <obj_property name="ObjectShortName">readyC</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group44" type="group">
+      <obj_property name="label">DMA</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="/cpu_TB/dma_start_int" type="logic">
+         <obj_property name="ElementShortName">dma_start_int</obj_property>
+         <obj_property name="ObjectShortName">dma_start_int</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/BR" type="logic">
+         <obj_property name="ElementShortName">BR</obj_property>
+         <obj_property name="ObjectShortName">BR</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/BG" type="logic">
+         <obj_property name="ElementShortName">BG</obj_property>
+         <obj_property name="ObjectShortName">BG</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/dma_end_int" type="logic">
+         <obj_property name="ElementShortName">dma_end_int</obj_property>
+         <obj_property name="ObjectShortName">dma_end_int</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/cmd" type="array">
+         <obj_property name="ElementShortName">cmd[31:0]</obj_property>
+         <obj_property name="ObjectShortName">cmd[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/DMA/cmd_reg" type="array">
+         <obj_property name="ElementShortName">cmd_reg[31:0]</obj_property>
+         <obj_property name="ObjectShortName">cmd_reg[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/dma_offset" type="array">
+         <obj_property name="ElementShortName">dma_offset[1:0]</obj_property>
+         <obj_property name="ObjectShortName">dma_offset[1:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/edata" type="array">
+         <obj_property name="ElementShortName">edata[63:0]</obj_property>
+         <obj_property name="ObjectShortName">edata[63:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/dma_WRITE" type="logic">
+         <obj_property name="ElementShortName">dma_WRITE</obj_property>
+         <obj_property name="ObjectShortName">dma_WRITE</obj_property>
+      </wvobject>
+      <wvobject fp_name="/cpu_TB/NUUT/d_dma_mem" type="array">
+         <obj_property name="ElementShortName">d_dma_mem[63:0]</obj_property>
+         <obj_property name="ObjectShortName">d_dma_mem[63:0]</obj_property>
+      </wvobject>
+   </wvobject>
+</wave_config>
